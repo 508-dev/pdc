@@ -1,0 +1,58 @@
+[project]
+name = "pdc"
+version = "0.0.1"
+description = "Production and Distribution Coordination — resource and labour coordination by need, in physical units."
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.12"
+dependencies = [
+  "pint>=0.24,<1.0",
+]
+
+[project.scripts]
+pdc = "pdc.cli.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pdc"]
+
+[tool.uv]
+# Dependency cooldown. Relative durations require uv >= 0.9.17; see
+# docs/supply-chain.md before changing this.
+exclude-newer = "P7D"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.14,<3.0",
+  "pytest>=8.3,<10.0",
+  "ruff>=0.14,<1.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short --strict-markers"
+markers = [
+  "determinism: reproducibility guarantees; never skip or xfail these",
+]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = ["src"]
+files = ["src", "tests"]
+check_untyped_defs = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+ignore_missing_imports = true
