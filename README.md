@@ -1,213 +1,115 @@
-# 508 Devkit
+# PDC
 
-Last reviewed: 2026-07-05
+**Production and Distribution Coordination** — software for organising
+resources and labour by need, in physical units, without a currency.
 
-Opinionated sane defaults and conventions for software projects.
+Post-capitalist resource coordination: model what a community needs, what a
+region can produce, and what any proposed allocation costs whom — then show
+that to everyone and let people decide. It is a calculator and a shared
+picture, not an allocator.
 
-This is not a scaffolding CLI. It is a reference repo and GitHub template that
-gives agents and humans a shared baseline for how new projects should be shaped:
-repository layout, local development, dependency safety, CI, agent instructions,
-operational memory, and documentation. It comes from 508.dev practice, but it
-is meant to be useful outside 508.dev too.
+Named for the Odonian institution in Ursula K. Le Guin's *The Dispossessed*.
+Early, and pre-alpha: there is a design, and it is being built.
 
-Point an agent at this repo when starting or normalizing a project. The agent should inspect the target repo, ask clarifying questions when the product or stack is ambiguous, and then copy or adapt only the conventions that fit.
+---
 
-## What It Captures
+## The idea
 
-- Agent-native instructions for Codex, Claude Code, Cursor, and future agents.
-- Gitignored workspace-local `.context/` conventions for Conductor and agents.
-- Bun and pnpm as first-class JavaScript package manager examples, with Bun
-  shown first.
-- Optional `uv` Python workspace conventions.
-- Optional Ruby/Rails/Rack conventions.
-- Dependency cooldowns for Bun, pnpm, uv, and Bundler.
-- Host-run development services.
-- Docker Compose examples for local infrastructure such as databases and
-  caches.
-- Deterministic worktree ports.
-- Framework-neutral frontend conventions.
-- `.worktreeinclude` for copying local-only env files into sibling worktrees.
-- `.dockerignore` for small, secret-safe Docker build contexts.
-- GitHub PR, issue, and CI hygiene.
-- Security scanning and dependency update policy.
-- Pydantic settings/schema and Alembic migration examples for Python services.
-- Drizzle ORM examples for TypeScript services.
-- Ruff, MyPy, Pytest, Biome, and Vitest.
-- Optional SOPS documentation without forcing SOPS into every repo.
+A town of 25,000 needs a certain number of calories, and a certain amount of
+iron and protein and water. Producing that requires particular farms, and
+those farms require phosphorus and labour and land, and the phosphorus and the
+labour come from somewhere too. All of that is calculable from public data.
 
-## Quickstart
+What is *not* calculable is who should get the wheat when there is not enough
+wheat. PDC does the first part and refuses the second.
 
-### Create A New Repository
+So the output is not a plan. It is an argument-grade picture:
 
-Use GitHub's `Use this template` button to create a new repository from
-`508-dev/508-devkit`.
+> If we direct all the phosphorus to farm A, farm B will not produce the
+> alfalfa that ranches C and D need the year after, which costs the system 50%
+> of its calories. If we split the phosphorus, the loss is 15%.
 
-GitHub templates copy the default-branch file tree. Treat the generated
-repository as a bootstrap workspace: the first PR should select the root
-hygiene files, stacks, extras, docs, and workflows that fit the product, then
-delete the rest.
+Everyone can see that, everyone can check the arithmetic against their own
+copy of the data, and then people decide — by whatever process they use,
+outside the software.
 
-Recommended first prompt in the generated repo:
+## What makes it different
 
-```text
-This repository was generated from 508 Devkit. Do a template selection pass:
-use MANIFEST.md to produce a selection report before editing, covering every
-top-level path in the devkit and this repo with adopt/adapt/skip/delete/defer
-and a one-line reason. Then keep only the root hygiene, stacks, extras, docs,
-and workflows that fit this project, delete the rest, rename all devkit/example
-identifiers, and run the narrowest relevant checks.
-```
+Nearly every adjacent project — Valueflows' own rollup, Basis, Cockshott's
+labour-time accounting, participatory economics, and obviously conventional
+ERP — eventually converts everything into one unit so that options can be
+ranked. Money, or hours, or credits, or shadow prices.
 
-See `docs/github-template.md` for the cleanup checklist.
+PDC does not. Costs and needs are carried as **vectors of physically distinct
+quantities** — labour-hours by skill, kg of phosphorus, m³ of water, kcal,
+hectare-seasons — and are never collapsed:
 
-### Normalize An Existing Repository
+> **Aggregate freely within a dimension. Never reduce across dimensions.**
 
-Use the repo directly as a reference:
+Summing calories across a region is arithmetic. Converting phosphorus into
+labour-hours is a value judgement, and it belongs to people rather than to a
+solver. This is Otto Neurath's *calculation in kind*, expressed as a data
+structure.
 
-```text
-Use https://github.com/508-dev/508-devkit or a local checkout of it as the
-project bootstrap reference.
-Inspect my target repo, ask any necessary questions, then apply the relevant conventions.
-```
+The cost of that choice is that the software cannot choose between options.
+That is the point, not a limitation.
 
-Or install/use the bundled agent skill from this repo:
+## Design commitments
 
-```text
-Install the skill from https://raw.githubusercontent.com/508-dev/508-devkit/main/skills/508-devkit/SKILL.md
-or from skills/508-devkit/SKILL.md in a local checkout.
-Run it as /508-devkit, /bootstrap-project, or whatever command name your agent client assigns.
-```
+- **The software proposes, explains, and records. It never allocates.** No
+  objective function ships.
+- **No currency, credits, labour-time accounting, or priority scores.** No
+  universal equivalent of any kind.
+- **Need is derived from cited standards, not from requests.** A standard with
+  no citation and no author is a validation error. There is no built-in ladder
+  of tiers and no privileged standard.
+- **Standards are a total expression language, not code** — so that anyone can
+  re-derive them in another language, in a spreadsheet, or on paper. Cheap
+  independent verification is the whole auditability model.
+- **Simulation-first.** Reality is simply the branch whose events people
+  authored. Scenarios are reproducible byte-for-byte on any mirror.
+- **Recursive agents.** Households nest in communes nest in valleys. Federation
+  is aggregation at a different depth, not a separate system.
+- **No blockchain.** A 51% attack means capital aggregation can overrule
+  community consensus, which is the failure this project exists to avoid.
+  Mirrorable, forkable, independently recomputable databases are strictly
+  better here.
 
-Expected agent behavior:
+Full reasoning, including what each decision forecloses, is in
+[`DECISIONS.md`](DECISIONS.md).
 
-- Inspect the target repo before editing.
-- Use `MANIFEST.md` to produce a selection report before editing. Cover every
-  top-level path in the devkit and the target repo with an adopt, adapt, skip,
-  delete, or defer decision and a one-line reason.
-- Ask about product shape, deployment target, data stores, and language/runtime choices when those are unclear.
-- Automatically pick up existing conventions when the repo already has them.
-- Prefer the devkit defaults for new projects unless there is a clear reason to choose a stack or extra.
-- Run the narrowest relevant checks before calling the bootstrap complete.
+## Built on
 
-For this repo itself:
+[Valueflows v1.0.0](https://www.valueflo.ws/) — the REA-derived vocabulary for
+economic networks, stable since February 2026 — adopted as the ontology, with
+its value-rollup algorithm replaced by a dimensional one. See
+[`docs/ontology.md`](docs/ontology.md) for the exact mapping and the three
+concepts PDC adds.
 
-```bash
-bun install --frozen-lockfile
-./scripts/check-all.sh
-./scripts/dev.sh
-```
+## Documentation
 
-## Layout
+| | |
+| --- | --- |
+| [`DECISIONS.md`](DECISIONS.md) | What was decided, why, and what it forecloses |
+| [`docs/ontology.md`](docs/ontology.md) | Valueflows mapping; NeedStandard, ResponseModel, CostVector |
+| [`docs/architecture.md`](docs/architecture.md) | Layering, simulation kernel, propagation engine |
+| [`docs/prior-art.md`](docs/prior-art.md) | What exists, what to take, where each stops |
+| [`docs/roadmap.md`](docs/roadmap.md) | Milestones, defined by what becomes answerable |
 
-```text
-AGENTS.md      Canonical agent operating instructions
-MANIFEST.md    File inventory and template-selection checklist
-DECISIONS.md   Decision authority for devkit topology and policy
-docs           Durable project documentation
-extras         Optional workflow, deployment, and support add-ons
-scripts        Stable human/agent entrypoints
-skills         Optional project-local agent skills
-stacks         Language/runtime convention packs
-```
+## Status
 
-## Read Next
+Pre-alpha. v1 is done when the synthetic reference region loads and the system
+reproduces the phosphorus comparison above — three years forward, with the
+alfalfa lag, exported and byte-reproducible on another machine. No UI, no
+database, no authentication, no solver until then.
 
-1. Read `DECISIONS.md`.
-2. Read `MANIFEST.md`.
-3. Read `docs/github-template.md` when starting from GitHub's template button.
-4. Read `docs/tooling.md`.
-5. Read `docs/frontend.md`.
-6. Read `docs/pattern-report.md` and `docs/template-proposal.md` when you need
-   devkit design history.
-7. Copy `.env.example` to `.env`.
-8. Run `./scripts/worktree-ports.sh env`.
-9. Run `./scripts/docker-compose.sh up -d postgres redis`.
-10. Run `./scripts/dev.sh`.
+## Uses
 
-The port helper's `env` command is the print-only URL/port mode. It prints
-`WEB_URL` first, followed by `WEB_PORT` and the rest of the assigned worktree
-ports, so coding orchestrators that scan startup output for a URL open the web
-surface first.
+Coordination for real communes; scenario planning; simulation; and a backend
+for simulation games. These are the same system because reality is just the
+branch with human-authored events.
 
-If a stale same-worktree dev process is still holding the web port, rerun with:
+## Licence
 
-```bash
-./scripts/dev.sh --reclaim-ports
-```
-
-Port reclaim is opt-in and intentionally narrow: the script checks the listener
-with `lsof` and refuses to kill it unless the process chain looks like this
-worktree's own JS dev server.
-
-## Worktree And Docker Hygiene
-
-Keep `.worktreeinclude` as a short allowlist of ignored local files that should follow a developer into new sibling worktrees. Typical entries are `.env`, `.env.local`, and `.sops.yaml`; never include generated directories or large state.
-
-Keep `.dockerignore` broad enough to exclude VCS metadata, agent scratch state, dependencies, caches, logs, and secrets from Docker build contexts. Make exceptions only for committed templates such as `.env.example`.
-
-Do not commit `.context/`. Conductor creates `.context/` as workspace-local
-agent scratch. Durable project knowledge belongs in normal docs such as
-`docs/tooling.md`, `docs/development.md`, `docs/pattern-report.md`, or
-`README.md`.
-
-## Package Manager Policy
-
-Bun is shown first because it is the author's preference and keeps small
-projects simple, but it is not a universal requirement.
-
-pnpm is first-class for teams or workspaces that already prefer it, need its
-monorepo behavior, or want the broader pnpm ecosystem. If using pnpm, add
-`pnpm-workspace.yaml`, set `minimumReleaseAge: 10080`, and change CI install
-commands to `pnpm install --frozen-lockfile`.
-
-## Pick-And-Choose Stacks And Extras
-
-This repository intentionally includes files that conflict with each other. It
-is a template source, not an installable preset or final generated app.
-
-- `stacks/typescript/`: framework-neutral TypeScript conventions, Drizzle
-  examples, Biome, Vitest.
-- `stacks/python/`: optional Python API/shared-package workspace.
-- `stacks/ruby/`: optional Ruby/Rails/Rack conventions with Bundler cooldown
-  guidance.
-- `stacks/typescript/pnpm/`: pnpm root files and CI fragment for larger TypeScript workspaces.
-- `extras/dev-scripts/`: JS-first script variants and JS implementations of helper scripts.
-- `extras/dockerfiles/`: opt-in Dockerfile examples for deployment parity.
-- `extras/devcontainer/`: opt-in dev container example.
-- `extras/object-storage/`: very opt-in MinIO Compose example for projects
-  that need local S3-compatible storage.
-- `extras/github/`: CODEOWNERS and discussion templates that need project-specific owners or support policy.
-- `extras/todo-to-issue/`: opt-in workflow for turning TODO comments into GitHub issues.
-- `.sops.yaml.example`: optional SOPS starter only for repos that need encrypted files.
-
-Keep root defaults for most new projects: shell wrappers, shell worktree ports,
-and example Compose-managed infra. Select language/runtime stacks such as
-`stacks/typescript/`, `stacks/python/`, or `stacks/ruby/` based on the target
-project. Treat stack files as conventions to adapt, not product code to copy
-blindly. If this repo was used through GitHub's template button, do the same
-selection and pruning before feature work.
-
-## Agent Notes
-
-- Never copy the whole repository into a target project.
-- A GitHub-generated repo starts with the whole file tree by design; make the
-  first project PR a template selection pass that removes irrelevant stacks,
-  extras, workflows, and docs.
-- Start with root hygiene files, then select only the stacks and extras that
-  match the target repo.
-- Treat `stacks/` as peer language/runtime convention packs. TypeScript and
-  Python are examples, not universal defaults. Ruby is available as an
-  opt-in convention pack when the target repo actually uses Ruby.
-- Treat `extras/` as opt-in workflows or deployment helpers that may require
-  repo settings, real owners, or team process.
-- Keep `.context/` gitignored. Promote durable learnings into tracked docs
-  instead of committing agent scratch.
-- Keep worktree port helpers generic. If a workspace orchestrator exposes a
-  reserved port or port block, map it to `WORKTREE_PRIMARY_PORT` or
-  `WORKTREE_PORT_BLOCK_START` outside the helper.
-
-## Skill Interface
-
-The repository is the source of truth. The downloadable skill in `skills/508-devkit/SKILL.md` is the agent-facing interface that explains how to apply these files to a target repo.
-
-Task-shaped skills in `skills/*/SKILL.md` capture repeatable workflows such as migration creation, service creation, context promotion, and CI triage.
+AGPL-3.0. Network copyleft is the operative clause: it prevents a proprietary
+hosted fork of a community's own allocation data.

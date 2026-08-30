@@ -3,7 +3,16 @@ description: Repository conventions for agent edits
 alwaysApply: true
 ---
 
-Read `AGENTS.md` before changing files. Prefer repo scripts over ad hoc
-commands. Keep edits small, update `.env.example` when adding config, and keep
-`.context/` as gitignored workspace-local scratch. Promote durable knowledge
-into tracked docs instead of committing `.context/`.
+Read `AGENTS.md` and `DECISIONS.md` before changing files. `DECISIONS.md`
+records commitments that rule out changes which would otherwise look like
+improvements; if a request would violate one, say so rather than implementing
+it.
+
+Three constraints most easily broken: never reduce heterogeneous physical
+quantities to one number; keep the kernel deterministic (no clocks, unseeded
+randomness, order-dependent iteration, or I/O under `src/pdc/` outside
+`cli/`); keep units substance-aware (kg P is not kg P₂O₅).
+
+Prefer repo scripts over ad hoc commands. Use `uv run` for Python. Keep edits
+small. Cite every physical coefficient. Keep `.context/` as gitignored
+workspace-local scratch and promote durable knowledge into tracked docs.

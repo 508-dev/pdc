@@ -1,14 +1,21 @@
 # Claude Code Instructions
 
-The canonical agent instructions are in `AGENTS.md`.
+The canonical agent instructions are in `AGENTS.md`. Read it, and read
+`DECISIONS.md` before any design-affecting change.
 
-Follow the same repo rules as Codex:
+The three constraints most easily violated by well-meaning improvements:
 
-- Read before editing.
-- Prefer repo-provided scripts. Use `bun run` for root tooling, `uv run` when a
-  Python workspace is present, and `bundle exec` when a Ruby workspace is
-  present.
-- Keep changes scoped.
-- Update `.env.example`, tests, and docs when contracts change.
-- Use gitignored `.context/` for concise workspace-local operational memory.
-  Promote durable knowledge into tracked docs instead of committing `.context/`.
+1. **Never reduce across dimensions.** No function returns a single number
+   summarising heterogeneous physical quantities. `CostVector` has no
+   `.total()`, deliberately.
+2. **The kernel is deterministic.** No clocks, no unseeded randomness, no
+   order-dependent iteration, no I/O under `src/pdc/` outside `cli/`.
+3. **Units are substance-aware.** kg P ≠ kg P₂O₅. Never coerce.
+
+If a request would violate a decision in `DECISIONS.md`, say so before
+implementing it.
+
+Repo conventions: `uv run` for Python, repo scripts over raw commands, read
+before editing, keep changes scoped, cite every physical coefficient, use the
+gitignored `.context/` for scratch and promote durable knowledge into tracked
+docs.

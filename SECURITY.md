@@ -1,40 +1,52 @@
 # Security Policy
 
-## Reporting Vulnerabilities
+## Threat model
 
-Do not open public issues for vulnerabilities or leaked secrets.
+PDC's threat model is unusual, so it is worth stating plainly.
 
-Report security concerns to the project maintainers through the private channel configured for the target repository. When applying this devkit to a new repository, replace this paragraph with the real reporting address or process.
+**The data is meant to be public.** The database is designed to be dumped,
+mirrored, forked, and recomputed by anyone. Confidentiality of resource and
+production records is not a goal; publishing them is the point. There are no
+secrets in the system by design.
 
-## Secret Handling
+The attacks that matter are therefore about **integrity and influence**, not
+disclosure:
 
-- Keep secrets in environment variables or encrypted files.
-- Never commit real `.env` files, tokens, private keys, credentials, or production data.
-- Use `.env.example` for documented configuration only.
-- Use `.sops.yaml.example` as a starting point when a repository needs encrypted files.
+- Silently altering a coefficient so one agent's claimed requirements or
+  yields diverge from reality without anyone noticing.
+- Forging events attributed to another agent.
+- Presenting a computation that cannot be independently reproduced, so that
+  the tool has to be trusted rather than checked.
 
-## Dependency Policy
+The countermeasures are structural rather than defensive: declarative, public
+need standards and coefficients that anyone can diff (v1); deterministic,
+byte-reproducible scenarios (v1); and per-agent signatures over per-agent hash
+chains (v2). See D-007 and D-010 in [`DECISIONS.md`](DECISIONS.md).
 
-This devkit uses dependency cooldowns and locked installs:
+A system that has to be trusted has already failed, whatever its cryptography.
 
-- Bun: `minimumReleaseAge = 604800`.
-- uv: `exclude-newer = "P7D"` when a Python workspace is present and uv is
-  `0.9.17` or newer.
-- Renovate: `minimumReleaseAge = "7 days"`.
-- CI should use frozen or locked installs.
+## Reporting
+
+Do not open public issues for vulnerabilities. Report to the maintainers
+privately via GitHub's security advisory feature on this repository.
+
+Reports about *integrity* — a way to make the system produce unreproducible
+results, or to attribute an event to an agent who did not author it — are as
+serious as conventional vulnerabilities here, and more likely.
+
+## Secret handling
+
+There should be nothing to protect. If a deployment adds credentials, keep
+them in environment variables or encrypted files and never in code. Never
+commit real `.env` files, tokens, private keys, or credentials.
+
+## Dependencies
+
+- `uv`: `exclude-newer = "P7D"` cooldown; requires uv ≥ 0.9.17.
+- Renovate: `minimumReleaseAge` of 7 days.
+- CI uses locked installs (`uv sync --locked`). Lockfiles are committed.
 
 ## GitHub Actions
 
-Workflows should use least-privilege permissions, pinned action SHAs, `persist-credentials: false` where practical, and `harden-runner` in audit or block mode.
-
-## Agent Notes
-
-- Do not leave the placeholder reporting channel in a real repository.
-- Prefer GitHub native secret scanning and push protection where available.
-- Add `extras/github/gitleaks.yml.example` only when maintainers want CI secret
-  scanning and can triage findings.
-- Add `extras/github/dependency-review.yml.example` only when dependency graph
-  reporting is desired and enabled.
-- Check `uv --no-config --version` before adding relative uv cooldowns to a
-  downstream repo. Ask before upgrading uv; do not leave old uv clients with
-  unparseable `P7D` or `7 days` config.
+Least-privilege permissions, action SHAs pinned, `persist-credentials: false`
+where practical, `harden-runner` in audit mode.
