@@ -74,3 +74,14 @@ def test_kernel_cannot_read_a_clock_or_the_network(path: pathlib.Path) -> None:
     """D-005: no wall-clock reads, no unseeded randomness, no I/O."""
     offending = _imported_roots(path) & FORBIDDEN_NONDETERMINISM
     assert not offending, f"{path.name} imports {sorted(offending)}"
+
+
+def test_the_engine_does_not_depend_on_fixture_data() -> None:
+    """`sim` is the engine and `seed` is one world it can be pointed at.
+
+    If the engine imports the fixture, the fixture stops being replaceable —
+    and a coordination tool whose engine knows about one specific valley is
+    not a coordination tool.
+    """
+    for path in (SOURCE_ROOT / "sim").rglob("*.py"):
+        assert "pdc.seed" not in path.read_text(), f"{path.name} imports the seed fixture"

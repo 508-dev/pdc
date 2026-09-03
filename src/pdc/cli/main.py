@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import sys
 from collections.abc import Sequence
 
@@ -22,7 +23,17 @@ from pdc.seed.scenarios import (
     opening_state,
     split_scenario,
 )
-from pdc.sim import ForwardRun, render_text, run_forward
+from pdc.sim import (
+    Assumption,
+    AssumptionKind,
+    Branch,
+    ForwardRun,
+    build_export,
+    render_text,
+    run_forward,
+    short,
+    verify,
+)
 from pdc.units import Q
 
 
@@ -165,8 +176,12 @@ def _print_cost(region: Region, specification: str, quantity: float, unit: str) 
 SCENARIOS = ("grain-first", "split")
 
 
+def _scenario_for(name: str, periods: int):  # type: ignore[no-untyped-def]
+    return grain_first_scenario(periods) if name == "grain-first" else split_scenario(periods)
+
+
 def _run(region: Region, name: str, periods: int) -> ForwardRun:
-    scenario = grain_first_scenario(periods) if name == "grain-first" else split_scenario(periods)
+    scenario = _scenario_for(name, periods)
     return run_forward(
         scenario,
         agents=region.agents,
@@ -232,6 +247,69 @@ def _print_explanation(region: Region, agent_id: str, scenario: str, period: int
     print(render_text(outcomes[0].cause))
 
 
+def _write_export(region: Region, path: pathlib.Path, name: str, periods: int) -> None:
+    """Write the artefact people argue over.
+
+    Self-contained: the question, the assumptions, the coefficient digests,
+    and the answer. Someone else runs `pdc verify` on it against their own
+    mirror and finds out whether they disagree, and about what.
+    """
+    scenario = _scenario_for(name, periods)
+    run = _run(region, name, periods)
+    branch = Branch(
+        label=scenario.label,
+        assumptions=(
+            Assumption(
+                kind=AssumptionKind.SET_CONSUMPTION_STANDARD,
+                target=("scenario",),
+                value=scenario.consumption_standard_id,
+                rationale="the standard the valley agreed describes ordinary life",
+            ),
+        ),
+    )
+    document = build_export(
+        run,
+        scenario,
+        recipes=region.recipes,
+        standards=region.standards,
+        branch=branch,
+    )
+    path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
+
+    print(f"wrote {path}")
+    print(f"  scenario        {scenario.label}")
+    print(f"  branch          {short(document['branch_digest'])}")
+    print(f"  recipes         {short(document['recipes_digest'])}")
+    print(f"  standards       {short(document['standards_digest'])}")
+    print(f"  results         {short(document['results_digest'])}")
+    print()
+    print("  Hand this to anyone with a copy of the model. `pdc verify` tells")
+    print("  them whether they get the same answer, and if not, whether it is")
+    print("  because they believe different coefficients.")
+
+
+def _verify_export(region: Region, path: pathlib.Path) -> int:
+    document = json.loads(path.read_text())
+    label = document["scenario"]["label"]
+    name = "grain-first" if label.startswith("grain") else "split"
+    run = _run(region, name, document["scenario"]["periods"])
+
+    result = verify(document, run, recipes=region.recipes, standards=region.standards)
+
+    print(f"Verifying {path}")
+    print("=" * 74)
+    print(f"  recipes    {'match' if result.recipes_match else 'DIFFER'}")
+    print(f"  standards  {'match' if result.standards_match else 'DIFFER'}")
+    print(f"  results    {'match' if result.results_match else 'DIFFER'}")
+    print()
+    print(f"  {result.summary()}")
+    if result.notes:
+        print()
+        for note in result.notes:
+            print(f"    {note}")
+    return 0 if result.reproduced else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="pdc",
@@ -263,6 +341,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     explain_parser.add_argument("agent", help="community id, e.g. chakar")
     explain_parser.add_argument("--scenario", default="grain-first", choices=SCENARIOS)
     explain_parser.add_argument("--period", type=int, default=1)
+    export_parser = subparsers.add_parser(
+        "export", help="write a self-contained, reproducible scenario document"
+    )
+    export_parser.add_argument("path", type=pathlib.Path)
+    export_parser.add_argument("--scenario", default="grain-first", choices=SCENARIOS)
+    export_parser.add_argument("--periods", type=int, default=3)
+    verify_parser = subparsers.add_parser(
+        "verify", help="re-run someone else's export and report where you disagree"
+    )
+    verify_parser.add_argument("path", type=pathlib.Path)
 
     args = parser.parse_args(argv)
     region = build_reference_region()
@@ -279,6 +367,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_comparison(region, args.periods)
     elif args.command == "explain":
         _print_explanation(region, args.agent, args.scenario, args.period)
+    elif args.command == "export":
+        _write_export(region, args.path, args.scenario, args.periods)
+    elif args.command == "verify":
+        return _verify_export(region, args.path)
 
     return 0
 
