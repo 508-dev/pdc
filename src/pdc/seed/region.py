@@ -29,6 +29,7 @@ from pdc.ontology import (
     Provenance,
     RecipeFlow,
     RecipeProcess,
+    ResourceComposition,
     ResourceSpecification,
 )
 from pdc.seed import coefficients as C
@@ -45,6 +46,7 @@ class Region:
     recipes: tuple[RecipeProcess, ...]
     resources: tuple[EconomicResource, ...]
     standards: tuple[NeedStandard, ...]
+    compositions: tuple[ResourceComposition, ...] = ()
 
     def agent(self, agent_id: str) -> Agent:
         for agent in self.agents:
@@ -490,6 +492,26 @@ def _standards() -> tuple[NeedStandard, ...]:
     return (sphere, valley)
 
 
+def _compositions() -> tuple[ResourceComposition, ...]:
+    """What the foods contain.
+
+    Only food energy for now. Protein and micronutrients are the obvious next
+    axis, and the machinery does not change: they are further nutrient
+    specifications, each with its own composition figures and its own
+    standards, never rolled together into a nutrition score.
+    """
+    return (
+        ResourceComposition(
+            "wheat.grain", "food.energy", C.GRAIN_ENERGY.value, C.GRAIN_ENERGY.citation
+        ),
+        ResourceComposition("bread", "food.energy", C.BREAD_ENERGY.value, C.BREAD_ENERGY.citation),
+        ResourceComposition(
+            "potato", "food.energy", C.POTATO_ENERGY.value, C.POTATO_ENERGY.citation
+        ),
+        ResourceComposition("milk", "food.energy", C.MILK_ENERGY.value, C.MILK_ENERGY.citation),
+    )
+
+
 def build_reference_region() -> Region:
     """Construct the synthetic reference region.
 
@@ -503,4 +525,5 @@ def build_reference_region() -> Region:
         recipes=_recipes(),
         resources=_resources(),
         standards=_standards(),
+        compositions=_compositions(),
     )

@@ -16,6 +16,13 @@ from pdc.needs import to_json
 from pdc.ontology import Action
 from pdc.seed import Region, build_reference_region
 from pdc.seed import coefficients as coefficients_module
+from pdc.seed.scenarios import (
+    CONSUMPTION_STANDARD,
+    grain_first_scenario,
+    opening_state,
+    split_scenario,
+)
+from pdc.sim import ForwardRun, render_text, run_forward
 from pdc.units import Q
 
 
@@ -155,6 +162,76 @@ def _print_cost(region: Region, specification: str, quantity: float, unit: str) 
     print("  labour — which is a decision for people, not arithmetic.")
 
 
+SCENARIOS = ("grain-first", "split")
+
+
+def _run(region: Region, name: str, periods: int) -> ForwardRun:
+    scenario = grain_first_scenario(periods) if name == "grain-first" else split_scenario(periods)
+    return run_forward(
+        scenario,
+        agents=region.agents,
+        recipes=region.recipes,
+        standards=region.standards,
+        compositions=region.compositions,
+        opening=opening_state(),
+    )
+
+
+def _print_comparison(region: Region, periods: int) -> None:
+    """Two allocations, side by side, per community.
+
+    There is no verdict line and there will not be one. The point of showing
+    both is that choosing between them is not a calculation (D-001).
+    """
+    runs = [_run(region, name, periods) for name in SCENARIOS]
+    communes = sorted((a for a in region.agents if a.kind == "commune"), key=lambda a: a.id)
+
+    print(f"Two allocations of the same {11000:,} kg of phosphorus")
+    print("=" * 74)
+    for run in runs:
+        print(f"  {run.scenario_label}")
+        for assumption in run.assumptions:
+            print(f"      assuming {assumption}")
+    print()
+
+    header = f"{'community':16}" + "".join(f"{run.scenario_label:>28}" for run in runs)
+    print(header)
+    print(f"{'':16}" + "".join(f"{'periods 0 / 1 / 2':>28}" for _ in runs))
+    print("-" * 74)
+
+    for agent in communes:
+        row = f"{agent.name:16}"
+        for run in runs:
+            outcomes = run.needs_for(agent.id, CONSUMPTION_STANDARD)
+            shares = [
+                100.0 * o.available.to("kcal").magnitude / o.required.to("kcal").magnitude
+                for o in outcomes
+            ]
+            row += "".join(f"{share:9.1f}%" for share in shares).rjust(28)
+        print(row)
+
+    print()
+    print("  Percentages are of each community's own declared adequate standard.")
+    print("  They are not added together, and there is no valley-wide score:")
+    print("  one allocation can be better in aggregate while leaving a")
+    print("  community with nothing, and a single number would hide that.")
+
+
+def _print_explanation(region: Region, agent_id: str, scenario: str, period: int) -> None:
+    run = _run(region, scenario, max(period + 1, 3))
+    outcomes = [
+        o
+        for o in run.period(period).needs
+        if o.agent_id == agent_id and o.standard_id == CONSUMPTION_STANDARD
+    ]
+    if not outcomes:
+        raise SystemExit(f"no outcome for {agent_id!r} in period {period}")
+
+    print(f"Why: {agent_id}, period {period}, under {run.scenario_label}")
+    print("=" * 74)
+    print(render_text(outcomes[0].cause))
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="pdc",
@@ -176,6 +253,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     cost_parser.add_argument("specification", help="resource specification id, e.g. bread")
     cost_parser.add_argument("--quantity", type=float, default=1.0)
     cost_parser.add_argument("--unit", default="tFW")
+    compare_parser = subparsers.add_parser(
+        "compare", help="run the reference allocations forward and show both outcomes"
+    )
+    compare_parser.add_argument("--periods", type=int, default=3)
+    explain_parser = subparsers.add_parser(
+        "explain", help="show the chain of consequence behind one community's shortfall"
+    )
+    explain_parser.add_argument("agent", help="community id, e.g. chakar")
+    explain_parser.add_argument("--scenario", default="grain-first", choices=SCENARIOS)
+    explain_parser.add_argument("--period", type=int, default=1)
 
     args = parser.parse_args(argv)
     region = build_reference_region()
@@ -188,6 +275,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_standards(region)
     elif args.command == "cost":
         _print_cost(region, args.specification, args.quantity, args.unit)
+    elif args.command == "compare":
+        _print_comparison(region, args.periods)
+    elif args.command == "explain":
+        _print_explanation(region, args.agent, args.scenario, args.period)
 
     return 0
 

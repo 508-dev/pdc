@@ -14,7 +14,7 @@ import pytest
 
 SOURCE_ROOT = pathlib.Path(__file__).resolve().parent.parent / "src" / "pdc"
 
-KERNEL_PACKAGES = ("units", "ontology", "costing", "needs", "seed")
+KERNEL_PACKAGES = ("units", "ontology", "costing", "needs", "sim", "seed")
 SHELL_PACKAGES = ("cli",)
 
 FORBIDDEN_IN_KERNEL = {

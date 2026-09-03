@@ -164,3 +164,19 @@ class RecipeProcess:
         """
         produced = [f for f in self.outputs if f.action is Action.PRODUCE]
         return len(produced) > 1
+
+
+@dataclass(frozen=True, slots=True)
+class ResourceComposition:
+    """How much of a nutrient a unit of a resource contains.
+
+    Composition is a property of the resource, not of the standard that reads
+    it: bread contains what it contains regardless of who is eating it. Kept
+    separate from NeedStandard so that a community revising what it considers
+    adequate does not accidentally revise what wheat is made of.
+    """
+
+    specification_id: str
+    nutrient_specification_id: str
+    per_unit: pint.Quantity
+    citation: Citation

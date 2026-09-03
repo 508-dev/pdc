@@ -18,6 +18,8 @@ See DECISIONS.md D-013 and docs/architecture.md section 2.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pint
 
 # Ratios are molar-mass derived and exact to the precision given.
@@ -109,3 +111,13 @@ Quantity = ureg.Quantity
 def Q(value: float, unit: str) -> pint.Quantity:
     """Shorthand for a dimensioned quantity in the PDC registry."""
     return ureg.Quantity(value, unit)
+
+
+def negated(quantity: pint.Quantity) -> pint.Quantity:
+    """Negate a quantity, preserving its declared type.
+
+    pint's operators are typed as returning the plain base class, so a bare
+    ``-quantity`` loses the annotation. Wrapping it keeps stock arithmetic
+    checkable rather than sprinkling ignores through the simulation.
+    """
+    return cast(pint.Quantity, -quantity)

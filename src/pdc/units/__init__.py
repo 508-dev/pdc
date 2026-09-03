@@ -1,6 +1,6 @@
 """Dimensioned quantities with substance-aware types."""
 
-from pdc.units.registry import Q, Quantity, build_registry, ureg
+from pdc.units.registry import Q, Quantity, build_registry, negated, ureg
 from pdc.units.substances import (
     dry_to_fresh,
     fresh_to_dry,
@@ -20,6 +20,7 @@ __all__ = [
     "k2o_to_k",
     "k_to_k2o",
     "n_to_crude_protein",
+    "negated",
     "p2o5_to_p",
     "p_to_p2o5",
     "ureg",

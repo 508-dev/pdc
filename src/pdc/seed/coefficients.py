@@ -223,6 +223,17 @@ COW_ALFALFA_FRACTION = _fixture(
 # Food energy content
 # --------------------------------------------------------------------------
 
+GRAIN_ENERGY = Coefficient(
+    name="wheat.grain.energy",
+    value=Q(3400.0, "kcal/kgFW"),
+    citation=USDA_FDC,
+    tags=("composition", "energy"),
+)
+"""Whole wheat grain. Note this exceeds the energy of the bread made from it:
+milling to white flour removes the bran, and baking adds water. Milling is a
+choice about palatability and storage, not a free improvement, and the model
+should show that rather than hide it."""
+
 BREAD_ENERGY = Coefficient(
     name="bread.energy",
     value=Q(2470.0, "kcal/kgFW"),
@@ -265,6 +276,7 @@ ALL: tuple[Coefficient, ...] = (
     MILK_YIELD,
     COW_FEED,
     COW_ALFALFA_FRACTION,
+    GRAIN_ENERGY,
     BREAD_ENERGY,
     POTATO_ENERGY,
     MILK_ENERGY,

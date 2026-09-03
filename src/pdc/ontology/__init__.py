@@ -9,6 +9,7 @@ from pdc.ontology.core import (
     ProcessSpecification,
     RecipeFlow,
     RecipeProcess,
+    ResourceComposition,
     ResourceSpecification,
 )
 
@@ -27,5 +28,6 @@ __all__ = [
     "Provenance",
     "RecipeFlow",
     "RecipeProcess",
+    "ResourceComposition",
     "ResourceSpecification",
 ]
