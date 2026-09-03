@@ -32,6 +32,9 @@ an issue and make the argument. Do not open a PR that quietly relaxes one.
   the proof.
 - **Reading the prior art** in [`docs/prior-art.md`](docs/prior-art.md) and
   telling us where we have got something wrong about it.
+- **Closing a gap** from [`docs/model-gaps.md`](docs/model-gaps.md). G-001
+  (nitrogen fixation) and G-002 (protein and micronutrients) are the two that
+  most change what the model's answers mean.
 
 ## Coefficients must be cited
 

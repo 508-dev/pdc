@@ -95,6 +95,7 @@ concepts PDC adds.
 | [`docs/architecture.md`](docs/architecture.md) | Layering, simulation kernel, propagation engine |
 | [`docs/prior-art.md`](docs/prior-art.md) | What exists, what to take, where each stops |
 | [`docs/roadmap.md`](docs/roadmap.md) | Milestones, defined by what becomes answerable |
+| [`docs/model-gaps.md`](docs/model-gaps.md) | What the model does not represent, and what that does to its answers |
 
 ## Status
 

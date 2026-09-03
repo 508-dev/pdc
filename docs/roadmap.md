@@ -117,6 +117,21 @@ binds first?"
 
 ---
 
+## Known model gaps
+
+Tracked separately in [`model-gaps.md`](model-gaps.md), because they are
+limits on what the answers mean rather than features not yet built. The two
+that most distort the reference question:
+
+- **G-001**, no nitrogen, so legume rotation has no benefit and forage looks
+  worse than it is.
+- **G-002**, food energy is the only nutrient modelled, which undervalues
+  animal products and pulses.
+
+Both are mostly coefficient work rather than engine work.
+
+---
+
 ## Non-goals, permanently
 
 - An objective function, or any capacity to choose between allocations (D-001).
