@@ -11,10 +11,12 @@ import json
 import sys
 from collections.abc import Sequence
 
+from pdc.costing import rollup
 from pdc.needs import to_json
 from pdc.ontology import Action
 from pdc.seed import Region, build_reference_region
 from pdc.seed import coefficients as coefficients_module
+from pdc.units import Q
 
 
 def _print_region(region: Region) -> None:
@@ -127,6 +129,32 @@ def _print_standards(region: Region) -> None:
     print(json.dumps(payload, indent=2))
 
 
+def _print_cost(region: Region, specification: str, quantity: float, unit: str) -> None:
+    """Show what a resource cost, as physically distinct quantities.
+
+    There is no total line, and there will not be one. Summing kilograms of
+    phosphorus with labour-hours needs an exchange rate between them, and
+    choosing one is a political act rather than an arithmetic one (D-002).
+    """
+    result = rollup(specification, Q(quantity, unit), region.recipes)
+
+    print(f"Cost of {result.quantity:~P} of {result.specification_id}")
+    print("=" * 62)
+    for component, value in result.cost:
+        print(f"  {component:22} {value:~P}")
+    print()
+
+    if result.cost.attributions:
+        print("  Under attribution rules:")
+        for record in result.cost.attributions:
+            print(f"    {record.process_id}: {record.rule_name}")
+        print()
+
+    print("  No total. These are physically distinct quantities and adding")
+    print("  them would require an exchange rate between phosphorus and")
+    print("  labour — which is a decision for people, not arithmetic.")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="pdc",
@@ -142,6 +170,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers.add_parser(
         "standards", help="emit need standards as canonical JSON, for independent evaluation"
     )
+    cost_parser = subparsers.add_parser(
+        "cost", help="roll a resource back to the primary inputs that produced it"
+    )
+    cost_parser.add_argument("specification", help="resource specification id, e.g. bread")
+    cost_parser.add_argument("--quantity", type=float, default=1.0)
+    cost_parser.add_argument("--unit", default="tFW")
 
     args = parser.parse_args(argv)
     region = build_reference_region()
@@ -152,6 +186,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_coefficients()
     elif args.command == "standards":
         _print_standards(region)
+    elif args.command == "cost":
+        _print_cost(region, args.specification, args.quantity, args.unit)
 
     return 0
 
