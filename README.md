@@ -99,10 +99,25 @@ concepts PDC adds.
 
 ## Status
 
-Pre-alpha. v1 is done when the synthetic reference region loads and the system
-reproduces the phosphorus comparison above — three years forward, with the
-alfalfa lag, exported and byte-reproducible on another machine. No UI, no
-database, no authentication, no solver until then.
+Early, but the kernel works. v1 is complete: the reference region runs the
+phosphorus comparison three years forward, reports per community against each
+community's declared standards, and exports byte-reproducibly — so anyone can
+re-run a scenario and be told whether they disagree, and about what.
+
+```
+pdc compare              both allocations, side by side, no verdict line
+pdc explain chakar       the causal chain, down to the cited coefficient
+pdc export out.json      a self-contained, reproducible scenario document
+pdc verify theirs.json   re-run someone else's and find where you differ
+```
+
+Next is a web interface, because the audit right is only real if checking the
+work does not require a terminal. See [`docs/roadmap.md`](docs/roadmap.md).
+
+Known limits are tracked openly in
+[`docs/model-gaps.md`](docs/model-gaps.md) — most notably that there is no
+nitrogen yet, so legume rotation has no benefit and forage looks worse than it
+is.
 
 ## Uses
 
