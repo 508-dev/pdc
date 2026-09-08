@@ -1,0 +1,27 @@
+{% comment %}
+One link in the chain. Renders a Cause exactly as the kernel produced it; no
+figure here is recomputed, which is what stops the screen and the model from
+drifting apart.
+{% endcomment %}
+<details {% if node.depth < 2 %}open{% endif %}>
+  <summary>{{ node.cause.summary }}</summary>
+
+  {% for name, quantity in node.detail %}
+    <p class="detail">{{ name }}:
+      <span class="num">{{ quantity.magnitude|floatformat:0 }} {{ quantity.units }}</span></p>
+  {% endfor %}
+
+  {% for item in node.evidence %}
+    <p class="detail">via {{ item.description }} =
+      <span class="num">{{ item.quantity.magnitude|floatformat:2 }} {{ item.quantity.units }}</span></p>
+    <p class="cite {% if item.citation.provenance.value == 'illustrative' %}illustrative{% endif %}">
+      source: {{ item.citation.source }}
+      {% if item.citation.locator %} — {{ item.citation.locator }}{% endif %}
+      [{{ item.citation.provenance.value }}]
+    </p>
+  {% endfor %}
+
+  {% for child in node.children %}
+    <div class="chain">{% include "pdc/_cause.html" with node=child %}</div>
+  {% endfor %}
+</details>

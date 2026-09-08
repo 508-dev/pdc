@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sys
 from collections.abc import Sequence
 
+from pdc.analysis import resource_pressure
 from pdc.costing import rollup
 from pdc.needs import to_json
-from pdc.ontology import Action
 from pdc.seed import Region, build_reference_region
 from pdc.seed import coefficients as coefficients_module
 from pdc.seed.scenarios import (
@@ -22,6 +23,7 @@ from pdc.seed.scenarios import (
     grain_first_scenario,
     opening_state,
     split_scenario,
+    whole_valley_batches,
 )
 from pdc.sim import (
     Assumption,
@@ -75,37 +77,26 @@ def _print_region(region: Region) -> None:
 def _print_phosphorus_budget(region: Region) -> None:
     """Show the constraint the reference question turns on.
 
-    Nothing here chooses an allocation. It states what is available and what
-    each option would consume, which is the whole of what the software is for
-    (D-001).
+    Formatting only. The figures come from pdc.analysis so that this shell and
+    the web interface cannot arrive at different numbers.
     """
     stock = next(r for r in region.resources if r.specification_id == "soil.phosphorus")
-    arable = sum(
-        agent.attribute("land.arable_ha")
-        for agent in region.agents
-        if agent.has_attribute("land.arable_ha")
+    pressure = resource_pressure(
+        "soil.phosphorus", stock.quantity, region.recipes, whole_valley_batches(region)
     )
 
     print("Phosphorus budget")
     print("-" * 62)
-    print(f"  available            {stock.quantity:~P}")
-    print(f"  arable land          {arable:,.0f} ha")
+    print(f"  available            {pressure.available:~P}")
     print()
-    print("  Demand if the whole valley were sown to one crop:")
-
-    for recipe in sorted(region.recipes, key=lambda r: r.id):
-        p_inputs = [
-            f
-            for f in recipe.inputs
-            if f.specification_id == "soil.phosphorus" and f.action is Action.CONSUME
-        ]
-        if not p_inputs:
-            continue
-        per_ha = p_inputs[0].quantity.to("kgP").magnitude
-        total = per_ha * arable
-        ratio = total / stock.quantity.to("kgP").magnitude
+    print("  If every hectare were sown to one crop:")
+    for demand in pressure.demands:
+        ratio = demand.ratio_of(pressure.available)
         verdict = "sufficient" if ratio <= 1.0 else f"{ratio:.1f}x available"
-        print(f"    {recipe.name:36} {per_ha:5.1f} kgP/ha  ->  {total:9,.0f} kgP  ({verdict})")
+        print(
+            f"    {demand.recipe_name:36} {demand.per_batch.to('kgP').magnitude:5.1f} kgP/ha"
+            f"  ->  {demand.total.to('kgP').magnitude:9,.0f} kgP  ({verdict})"
+        )
 
     print()
     print("  The valley cannot sow everything it could otherwise sow. Which")
@@ -310,6 +301,28 @@ def _verify_export(region: Region, path: pathlib.Path) -> int:
     return 0 if result.reproduced else 1
 
 
+def _serve(host: str, port: int) -> int:
+    """Run the explorer's development server.
+
+    Django is an optional dependency: the kernel stays installable without a
+    web stack so that simulation and game uses do not carry one (D-012).
+    """
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "pdc.web.settings")
+    try:
+        from django.core.management import execute_from_command_line
+    except ModuleNotFoundError:
+        print(
+            "The explorer needs Django, which is an optional extra.\n"
+            "  uv sync --all-extras      (in this repository)\n"
+            "  pip install 'pdc[web]'    (elsewhere)",
+            file=sys.stderr,
+        )
+        return 1
+
+    execute_from_command_line(["pdc", "runserver", f"{host}:{port}"])
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="pdc",
@@ -351,6 +364,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "verify", help="re-run someone else's export and report where you disagree"
     )
     verify_parser.add_argument("path", type=pathlib.Path)
+    web_parser = subparsers.add_parser("web", help="serve the explorer (requires the 'web' extra)")
+    web_parser.add_argument("--host", default="127.0.0.1")
+    web_parser.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
     region = build_reference_region()
@@ -371,6 +387,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         _write_export(region, args.path, args.scenario, args.periods)
     elif args.command == "verify":
         return _verify_export(region, args.path)
+    elif args.command == "web":
+        return _serve(args.host, args.port)
 
     return 0
 

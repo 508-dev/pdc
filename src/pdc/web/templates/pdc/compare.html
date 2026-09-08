@@ -1,0 +1,57 @@
+{% extends "pdc/base.html" %}
+{% block title %}Comparing allocations{% endblock %}
+{% block content %}
+
+<h2>Two ways of dividing the same phosphorus</h2>
+<p class="lede">Each figure is that community's own food energy as a share of
+  its own declared standard, across three years. Follow any figure to see why
+  it came out that way.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th rowspan="2">Community</th>
+      {% for scenario in scenarios %}<th colspan="3">{{ scenario }}</th>{% endfor %}
+    </tr>
+    <tr>
+      {% for scenario in scenarios %}
+        <th>year 1</th><th>year 2</th><th>year 3</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td>{{ row.agent.name }}</td>
+      {% for column in row.columns %}
+        {% for reading in column.readings %}
+          <td class="num {% if reading.is_destitute %}zero{% elif not reading.met %}short{% else %}met{% endif %}">
+            <a href="{% url 'explain' column.scenario row.agent.id reading.period %}">
+              {{ reading.percentage|floatformat:1 }}%</a>
+          </td>
+        {% endfor %}
+      {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="note">
+  <strong>There is no total row, and there will not be one.</strong>
+  Directing the phosphorus to grain gives the valley more food energy overall
+  and leaves Chakar with nothing: it has no grain farm, so its only food
+  arrives through alfalfa and the dairy herd. A single valley-wide figure
+  would report the aggregate as an improvement and hide the community that
+  got zero. Preserving that is the point of never reducing across dimensions
+  or across communities.
+</div>
+
+<h3>What each run assumed</h3>
+{% for name, forward in runs.items %}
+  <p><strong>{{ name }}</strong></p>
+  <ul class="detail">
+    {% for assumption in forward.assumptions %}<li>{{ assumption }}</li>{% endfor %}
+  </ul>
+{% endfor %}
+
+{% endblock %}

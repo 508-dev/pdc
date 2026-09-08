@@ -1,0 +1,28 @@
+{% extends "pdc/base.html" %}
+{% block title %}Why — {{ agent.name }}{% endblock %}
+{% block content %}
+
+<h2>{{ agent.name }}, year {{ period|add:1 }}, under <em>{{ scenario }}</em></h2>
+
+<p class="lede">{{ outcome.cause.summary }}</p>
+
+<h3>The chain</h3>
+<div class="chain">
+  {% include "pdc/_cause.html" with node=tree %}
+</div>
+
+<div class="note">
+  <strong>This chain ends in numbers, and every number has a source.</strong>
+  If one of them is wrong for your soil, your herd, or your season, that is
+  the thing to argue about — not the conclusion. Change the coefficient and
+  the whole chain recomputes.
+</div>
+
+<h3>What this run assumed</h3>
+<ul class="detail">
+  {% for assumption in assumptions %}<li>{{ assumption }}</li>{% endfor %}
+</ul>
+
+<p><a href="{% url 'compare' %}">&larr; Back to the comparison</a></p>
+
+{% endblock %}

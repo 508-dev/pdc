@@ -158,3 +158,22 @@ def split_scenario(periods: int = 3, alfalfa_share: float = 0.4) -> Scenario:
         periods,
         consumption_standard_id=CONSUMPTION_STANDARD,
     )
+
+
+def whole_valley_batches(region: object) -> dict[str, float]:
+    """Every arable hectare sown to each crop in turn.
+
+    A deliberately unrealistic comparison — no valley sows one crop
+    everywhere — used to show the scale of the phosphorus constraint. It says
+    what each option would take, not what anyone should do.
+    """
+    arable = sum(
+        agent.attribute("land.arable_ha")
+        for agent in region.agents  # type: ignore[attr-defined]
+        if agent.has_attribute("land.arable_ha")
+    )
+    return {
+        "recipe.wheat": arable,
+        "recipe.alfalfa": arable,
+        "recipe.potato": arable,
+    }

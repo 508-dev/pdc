@@ -14,8 +14,8 @@ import pytest
 
 SOURCE_ROOT = pathlib.Path(__file__).resolve().parent.parent / "src" / "pdc"
 
-KERNEL_PACKAGES = ("units", "ontology", "costing", "needs", "sim", "seed")
-SHELL_PACKAGES = ("cli",)
+KERNEL_PACKAGES = ("units", "ontology", "costing", "needs", "sim", "analysis", "seed")
+SHELL_PACKAGES = ("cli", "web")
 
 FORBIDDEN_IN_KERNEL = {
     "django",

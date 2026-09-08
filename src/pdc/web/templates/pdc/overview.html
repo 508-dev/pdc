@@ -1,0 +1,79 @@
+{% extends "pdc/base.html" %}
+{% block title %}Abbenay Valley{% endblock %}
+{% block content %}
+
+<h2>Communities</h2>
+<table>
+  <thead>
+    <tr><th>Community</th><th>People</th><th>Requires, per day</th><th>Under which standard</th></tr>
+  </thead>
+  <tbody>
+  {% for entry in communities %}
+    {% for need in entry.needs %}
+    <tr>
+      {% if forloop.first %}
+        <td rowspan="{{ entry.needs|length }}">{{ entry.agent.name }}</td>
+        <td rowspan="{{ entry.needs|length }}" class="num">{{ entry.population|floatformat:0 }}</td>
+      {% endif %}
+      <td class="num">{{ need.per_day.magnitude|floatformat:0 }} kcal</td>
+      <td>{{ need.standard.name }}<br>
+        <span class="cite">{{ need.standard.citation.source }}</span></td>
+    </tr>
+    {% endfor %}
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="note">
+  <strong>These standards are peers, not a ladder.</strong> One is a
+  humanitarian survival minimum, the other a level this valley's communities
+  agreed describes ordinary life. Neither is privileged by the software, and
+  neither can be traded against the other — a community is simply reported
+  against each.
+</div>
+
+<h2>What is held</h2>
+<table>
+  <thead><tr><th>Resource</th><th>Quantity</th><th>Held by</th></tr></thead>
+  <tbody>
+  {% for resource in resources %}
+    <tr>
+      <td><code>{{ resource.specification_id }}</code></td>
+      <td class="num">{{ resource.quantity.magnitude|floatformat:0 }}
+        {{ resource.quantity.units }}</td>
+      <td>{{ resource.custodian_id }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Phosphorus</h2>
+<p>The valley holds
+  <strong class="num">{{ pressure.available.magnitude|floatformat:0 }} kg</strong>
+  of phosphorus. Sowing every arable hectare to a single crop would take:</p>
+
+<table>
+  <thead>
+    <tr><th>If sown entirely to</th><th>Per hectare</th><th>In total</th><th>Against stock</th></tr>
+  </thead>
+  <tbody>
+  {% for row in demands %}
+    <tr>
+      <td>{{ row.demand.recipe_name }}</td>
+      <td class="num">{{ row.demand.per_batch.magnitude|floatformat:1 }} kg</td>
+      <td class="num">{{ row.demand.total.magnitude|floatformat:0 }} kg</td>
+      <td class="num {% if row.ratio > 1 %}short{% endif %}">
+        {{ row.ratio|floatformat:1 }}&times;</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="note">
+  <strong>Something has to give, and the software will not say what.</strong>
+  It can show what each option would take and what would follow from it.
+  Choosing is for the people of the valley.
+  <a href="{% url 'compare' %}">Compare two ways of dividing it &rarr;</a>
+</div>
+
+{% endblock %}

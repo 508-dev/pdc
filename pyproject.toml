@@ -9,6 +9,13 @@ dependencies = [
   "pint>=0.24,<1.0",
 ]
 
+[project.optional-dependencies]
+# The kernel stays frameworkless (D-012) so that simulation and game uses can
+# install it without pulling a web stack. Django is only for the explorer.
+web = [
+  "django>=5.1,<6.0",
+]
+
 [project.scripts]
 pdc = "pdc.cli.main:main"
 
@@ -26,6 +33,7 @@ exclude-newer = "P7D"
 
 [dependency-groups]
 dev = [
+  "django>=5.1,<6.0",
   "mypy>=1.14,<3.0",
   "pytest>=8.3,<10.0",
   "ruff>=0.14,<1.0",

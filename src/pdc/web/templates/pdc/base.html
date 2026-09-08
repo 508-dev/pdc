@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}PDC{% endblock %}</title>
+<style>
+  /* No JavaScript on this page. The causal chain uses <details>, which every
+     browser expands without help. Auditing the model should not require a
+     working script engine, a fast connection, or a recent device. */
+  :root {
+    --ink: #1a1a1a; --muted: #5a5a5a; --rule: #d8d4cc;
+    --paper: #faf8f4; --panel: #f2eee6; --short: #8a3324; --met: #2f5d3a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e4dc; --muted: #a09a90; --rule: #3a3630;
+      --paper: #16150f; --panel: #201e18; --short: #d98b7a; --met: #8fbf9f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 1rem 4rem; background: var(--paper); color: var(--ink);
+    font: 16px/1.55 ui-serif, Georgia, "Times New Roman", serif;
+  }
+  main, header { max-width: 68rem; margin: 0 auto; }
+  header { padding: 1.5rem 0 1rem; border-bottom: 2px solid var(--rule); }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.15rem; margin: 2.5rem 0 .75rem; }
+  h3 { font-size: 1rem; margin: 1.5rem 0 .5rem; }
+  nav a { margin-right: 1.25rem; }
+  a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: currentColor; }
+  .lede { color: var(--muted); margin: .25rem 0 0; }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1rem; }
+  th, td { text-align: right; padding: .4rem .6rem; border-bottom: 1px solid var(--rule); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-weight: 600; border-bottom: 2px solid var(--rule); }
+  tbody tr:hover { background: var(--panel); }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .short { color: var(--short); font-weight: 600; }
+  .met { color: var(--met); }
+  .zero { color: var(--short); font-weight: 700; }
+  .note {
+    background: var(--panel); border-left: 3px solid var(--rule);
+    padding: .75rem 1rem; margin: 1rem 0; color: var(--muted);
+  }
+  .note strong { color: var(--ink); }
+  details { margin: .35rem 0; }
+  summary { cursor: pointer; padding: .2rem 0; }
+  .chain { border-left: 2px solid var(--rule); margin-left: .5rem; padding-left: 1rem; }
+  .detail { color: var(--muted); font-size: .9rem; margin: .15rem 0; }
+  .cite { color: var(--muted); font-size: .85rem; font-style: italic; }
+  .illustrative { color: var(--short); }
+  code { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+  footer { max-width: 68rem; margin: 3rem auto 0; padding-top: 1rem;
+           border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Abbenay Valley</h1>
+  <p class="lede">Production and Distribution Coordination — the software
+    proposes, explains and records; it does not allocate.</p>
+  <nav>
+    <a href="{% url 'overview' %}">The valley</a>
+    <a href="{% url 'compare' %}">Compare allocations</a>
+  </nav>
+</header>
+<main>{% block content %}{% endblock %}</main>
+<footer>
+  <p>Every figure here is computed by the same kernel the command line uses,
+     and every scenario shown can be exported and re-run by anyone.
+     Coefficients marked <span class="illustrative">illustrative</span> are
+     plausible but unsourced, and are refused outside demonstrations.</p>
+</footer>
+</body>
+</html>
