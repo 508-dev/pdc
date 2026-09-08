@@ -1,0 +1,58 @@
+{% extends "pdc/base.html" %}
+{% block title %}Coefficients{% endblock %}
+{% block content %}
+
+<h2>Every number the model runs on</h2>
+<p class="lede">The coefficients are the argument. If a conclusion looks wrong,
+  the useful disagreement is with one of these, not with the conclusion.</p>
+
+<div class="note">
+  <strong>{{ illustrative }} of {{ total }} are illustrative</strong> —
+  plausible for a temperate, partly irrigated, semi-mechanised region, and not
+  measured, sourced, or specific to anywhere. The software refuses them outside
+  demonstrations. Replacing them with sourced figures for a real place is the
+  most useful contribution anyone can make, and it needs no programming.
+</div>
+
+<table>
+  <thead>
+    <tr><th>Process</th><th>Flow</th><th>Quantity</th><th>Source</th></tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td>{{ row.recipe.name }}</td>
+      <td><code>{{ row.flow.action.value }}</code> {{ row.flow.specification_id }}
+        {% if row.flow.lag_periods %}
+          <br><span class="detail">arrives {{ row.flow.lag_periods }} season(s) later</span>
+        {% endif %}
+      </td>
+      <td class="num">{{ row.flow.quantity.magnitude|floatformat:2 }}
+        {{ row.flow.quantity.units }}</td>
+      <td class="cite {% if row.is_illustrative %}illustrative{% endif %}">
+        {{ row.flow.citation.source }}
+        [{{ row.flow.citation.provenance.value }}]
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Standards</h2>
+<table>
+  <thead><tr><th>Standard</th><th>Version</th><th>Source</th></tr></thead>
+  <tbody>
+  {% for standard in standards %}
+    <tr>
+      <td>{{ standard.name }}<br><code>{{ standard.id }}</code></td>
+      <td>{{ standard.version }}</td>
+      <td class="cite">{{ standard.citation.source }}
+        [{{ standard.citation.provenance.value }}]</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<p><a href="{% url 'compare_models' %}">Compare these against someone else's &rarr;</a></p>
+
+{% endblock %}

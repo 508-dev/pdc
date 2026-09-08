@@ -23,9 +23,12 @@ ALLOWED_HOSTS = os.environ.get("PDC_ALLOWED_HOSTS", "*").split(",")
 
 INSTALLED_APPS: list[str] = []
 
-# No sessions, no auth, no messages: nothing here has a user.
+# No sessions, no auth, no messages: nothing here has a user. CSRF is kept
+# because there is one POST — uploading someone else's export to diff against
+# — and Django's implementation needs only a cookie, not a session.
 MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
 ]
 
 ROOT_URLCONF = "pdc.web.urls"
@@ -43,6 +46,13 @@ TEMPLATES = [
 # want: an accidental model import should fail loudly rather than silently
 # creating state.
 DATABASES: dict[str, dict[str, str]] = {}
+
+# An uploaded export is read into memory to be parsed. Cap it: this endpoint
+# takes a document from a stranger, and it is the only place the explorer
+# accepts input it did not generate.
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_BYTES
+FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_BYTES
 
 USE_TZ = False
 LANGUAGE_CODE = "en"

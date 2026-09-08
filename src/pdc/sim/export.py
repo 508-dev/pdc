@@ -31,7 +31,14 @@ from pdc.sim.forward import ForwardRun
 from pdc.sim.identity import digest, quantity_json
 from pdc.sim.world import Scenario
 
-EXPORT_FORMAT = 1
+EXPORT_FORMAT = 2
+"""Format 2 carries the coefficients themselves, not only their digest.
+
+Format 1 could report *that* two models disagreed. Answering "which variable
+are they tweaking?" — the question the whole audit right exists to serve —
+needs the numbers, so they travel with the document. Format 1 exports are
+still readable; they just cannot be diffed field by field.
+"""
 
 
 def recipes_digest(recipes: Sequence[RecipeProcess]) -> str:
@@ -60,6 +67,54 @@ def recipes_digest(recipes: Sequence[RecipeProcess]) -> str:
             for recipe in sorted(recipes, key=lambda r: r.id)
         ]
     )
+
+
+def recipes_payload(recipes: Sequence[RecipeProcess]) -> list[dict[str, Any]]:
+    """The coefficients, in full, with their citations.
+
+    Travelling with the export so that a disagreement can be located rather
+    than merely detected.
+    """
+    return [
+        {
+            "id": recipe.id,
+            "name": recipe.name,
+            "process_specification": recipe.process_specification_id,
+            "duration_periods": recipe.duration_periods,
+            "flows": [
+                {
+                    "action": flow.action.value,
+                    "specification": flow.specification_id,
+                    "quantity": quantity_json(flow.quantity),
+                    "lag": flow.lag_periods,
+                    "citation": {
+                        "source": flow.citation.source,
+                        "provenance": flow.citation.provenance.value,
+                        "locator": flow.citation.locator,
+                    },
+                }
+                for flow in recipe.flows()
+            ],
+        }
+        for recipe in sorted(recipes, key=lambda r: r.id)
+    ]
+
+
+def standards_payload(standards: Sequence[NeedStandard]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": standard.id,
+            "name": standard.name,
+            "version": standard.version,
+            "author": standard.author_id,
+            "expression": to_json(standard.expression),
+            "citation": {
+                "source": standard.citation.source,
+                "provenance": standard.citation.provenance.value,
+            },
+        }
+        for standard in sorted(standards, key=lambda s: s.id)
+    ]
 
 
 def standards_digest(standards: Sequence[NeedStandard]) -> str:
@@ -156,6 +211,8 @@ def build_export(
         "kernel_version": __version__,
         "recipes_digest": recipes_digest(recipes),
         "standards_digest": standards_digest(standards),
+        "recipes": recipes_payload(recipes),
+        "standards": standards_payload(standards),
         "branch": branch.to_json() if branch else None,
         "branch_digest": branch.digest if branch else None,
         "scenario": scenario_json(scenario),
@@ -286,3 +343,101 @@ def _first_divergences(
                 found += 1
 
     return notes
+
+
+@dataclass(frozen=True, slots=True)
+class CoefficientDifference:
+    """One number two models disagree about.
+
+    The unit of the conversation this project exists to enable: not "your
+    answer is wrong" but "you think a hectare of alfalfa takes 22.5 kg of
+    phosphorus and I think it takes 15, and here is where each of us got that".
+    """
+
+    recipe_id: str
+    recipe_name: str
+    action: str
+    specification_id: str
+    theirs: dict[str, Any] | None
+    mine: dict[str, Any] | None
+    their_citation: str | None = None
+    my_citation: str | None = None
+
+    @property
+    def kind(self) -> str:
+        if self.theirs is None:
+            return "only in mine"
+        if self.mine is None:
+            return "only in theirs"
+        return "differs"
+
+    @property
+    def ratio(self) -> float | None:
+        """How many times larger their figure is than mine.
+
+        None when the two are not comparable — different units, or one side
+        absent — because a ratio across units would be exactly the reduction
+        this project refuses.
+        """
+        if self.theirs is None or self.mine is None:
+            return None
+        if self.theirs["units"] != self.mine["units"]:
+            return None
+        if not self.mine["magnitude"]:
+            return None
+        return self.theirs["magnitude"] / self.mine["magnitude"]
+
+
+def diff_recipes(
+    export: dict[str, Any], recipes: Sequence[RecipeProcess]
+) -> tuple[CoefficientDifference, ...]:
+    """Locate every coefficient two models disagree about.
+
+    This is the "why does this farm claim ten times the labour of any
+    comparable farm" workflow, answered mechanically. Signatures would tell
+    you who asserted a figure; this tells you whether the figure is plausible,
+    which is the question people actually ask (D-010).
+    """
+    theirs = {entry["id"]: entry for entry in export.get("recipes", [])}
+    mine = {entry["id"]: entry for entry in recipes_payload(recipes)}
+
+    differences: list[CoefficientDifference] = []
+
+    for recipe_id in sorted(set(theirs) | set(mine)):
+        their_recipe = theirs.get(recipe_id)
+        my_recipe = mine.get(recipe_id)
+        name = (their_recipe or my_recipe or {}).get("name", recipe_id)
+
+        their_flows = {
+            (f["action"], f["specification"]): f for f in (their_recipe or {}).get("flows", [])
+        }
+        my_flows = {
+            (f["action"], f["specification"]): f for f in (my_recipe or {}).get("flows", [])
+        }
+
+        for key in sorted(set(their_flows) | set(my_flows)):
+            their_flow = their_flows.get(key)
+            my_flow = my_flows.get(key)
+
+            if their_flow and my_flow and their_flow["quantity"] == my_flow["quantity"]:
+                continue
+
+            differences.append(
+                CoefficientDifference(
+                    recipe_id=recipe_id,
+                    recipe_name=name,
+                    action=key[0],
+                    specification_id=key[1],
+                    theirs=their_flow["quantity"] if their_flow else None,
+                    mine=my_flow["quantity"] if my_flow else None,
+                    their_citation=(their_flow or {}).get("citation", {}).get("source"),
+                    my_citation=(my_flow or {}).get("citation", {}).get("source"),
+                )
+            )
+
+    return tuple(differences)
+
+
+def is_diffable(export: dict[str, Any]) -> bool:
+    """Whether an export carries coefficients rather than only their digest."""
+    return bool(export.get("recipes"))

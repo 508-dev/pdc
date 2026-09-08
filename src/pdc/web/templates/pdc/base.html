@@ -61,7 +61,8 @@
   .controls label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
   .controls output { font-weight: 400; font-variant-numeric: tabular-nums; }
   .controls input[type=range] { width: 100%; }
-  .controls input[type=number], .controls select { padding: .3rem; font: inherit; }
+  .controls input[type=number], .controls select,
+  .controls input[type=file] { padding: .3rem; font: inherit; }
   .controls button {
     margin-top: 1rem; padding: .45rem 1.1rem; font: inherit; cursor: pointer;
     background: var(--ink); color: var(--paper); border: 0;
@@ -81,6 +82,8 @@
     <a href="{% url 'overview' %}">The valley</a>
     <a href="{% url 'compare' %}">Compare allocations</a>
     <a href="{% url 'explore' %}">Explore</a>
+    <a href="{% url 'coefficients' %}">Coefficients</a>
+    <a href="{% url 'compare_models' %}">Compare models</a>
   </nav>
 </header>
 <main>{% block content %}{% endblock %}</main>

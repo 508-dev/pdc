@@ -141,3 +141,128 @@ def test_the_explorer_has_no_database(client: Client) -> None:
 def test_runs_are_cached_but_identical(client: Client) -> None:
     """Caching is safe precisely because the kernel is deterministic (D-005)."""
     assert run("grain-first") is run("grain-first")
+
+
+# --------------------------------------------------------------------------
+# Coefficient inspection and model comparison
+# --------------------------------------------------------------------------
+
+
+def test_coefficients_page_lists_every_number_with_its_source(client: Client) -> None:
+    body = client.get("/coefficients/").content.decode()
+    assert "soil.phosphorus" in body
+    assert "illustrative" in body
+    assert "Sphere" in body
+
+
+def test_coefficients_page_says_how_many_are_unsourced(client: Client) -> None:
+    """A reader must be able to tell how much of the model is a demonstration."""
+    body = " ".join(client.get("/coefficients/").content.decode().split())
+    assert "are illustrative" in body
+    assert "needs no programming" in body
+
+
+def test_compare_models_page_renders(client: Client) -> None:
+    assert client.get("/compare-models/").status_code == 200
+
+
+def test_uploading_our_own_export_finds_no_disagreement(client: Client, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    import json
+
+    from pdc.seed import build_reference_region
+    from pdc.seed.scenarios import grain_first_scenario
+    from pdc.sim import build_export
+    from pdc.web.context import run
+
+    region = build_reference_region()
+    document = build_export(
+        run("grain-first"),
+        grain_first_scenario(),
+        recipes=region.recipes,
+        standards=region.standards,
+    )
+    path = tmp_path / "ours.json"
+    path.write_text(json.dumps(document))
+
+    with path.open("rb") as handle:
+        response = client.post("/compare-models/", {"export": handle})
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert "reproduced exactly" in body
+    assert "Every coefficient matches" in body
+
+
+def test_uploading_a_divergent_model_names_the_coefficient(client: Client, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Not "your answer is wrong", but "you think a hectare of alfalfa takes
+    22.5 kg of phosphorus and I think it takes 15"."""
+    import dataclasses
+    import json
+
+    from pdc.seed import build_reference_region
+    from pdc.seed.scenarios import grain_first_scenario, opening_state
+    from pdc.sim import build_export, run_forward
+    from pdc.units import Q
+
+    region = build_reference_region()
+    theirs = tuple(
+        dataclasses.replace(
+            recipe,
+            inputs=tuple(
+                dataclasses.replace(flow, quantity=Q(15.0, "kgP"))
+                if flow.specification_id == "soil.phosphorus"
+                else flow
+                for flow in recipe.inputs
+            ),
+        )
+        if recipe.id == "recipe.alfalfa"
+        else recipe
+        for recipe in region.recipes
+    )
+    forward = run_forward(
+        grain_first_scenario(),
+        agents=region.agents,
+        recipes=theirs,
+        standards=region.standards,
+        compositions=region.compositions,
+        opening=opening_state(),
+    )
+    path = tmp_path / "theirs.json"
+    path.write_text(
+        json.dumps(
+            build_export(
+                forward, grain_first_scenario(), recipes=theirs, standards=region.standards
+            )
+        )
+    )
+
+    with path.open("rb") as handle:
+        body = client.post("/compare-models/", {"export": handle}).content.decode()
+
+    assert "Which numbers you disagree about" in body
+    assert "soil.phosphorus" in body
+    assert "22.50" in body and "15.00" in body
+    assert "disagreement about the world" in " ".join(body.split())
+
+
+def test_uploading_rubbish_is_rejected_gracefully(client: Client, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    path = tmp_path / "not-json.json"
+    path.write_text("this is not JSON at all")
+    with path.open("rb") as handle:
+        response = client.post("/compare-models/", {"export": handle})
+    assert response.status_code == 400
+    assert b"does not parse" in response.content
+
+
+def test_uploading_valid_json_that_is_not_an_export_is_rejected(client: Client, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    path = tmp_path / "other.json"
+    path.write_text('{"hello": "world"}')
+    with path.open("rb") as handle:
+        response = client.post("/compare-models/", {"export": handle})
+    assert response.status_code == 400
+    assert b"not a PDC export" in response.content
+
+
+def test_uploading_nothing_is_rejected(client: Client) -> None:
+    response = client.post("/compare-models/", {})
+    assert response.status_code == 400

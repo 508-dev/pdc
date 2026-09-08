@@ -31,6 +31,8 @@ from pdc.sim import (
     Branch,
     ForwardRun,
     build_export,
+    diff_recipes,
+    is_diffable,
     render_text,
     run_forward,
     short,
@@ -301,6 +303,55 @@ def _verify_export(region: Region, path: pathlib.Path) -> int:
     return 0 if result.reproduced else 1
 
 
+def _diff_export(region: Region, path: pathlib.Path) -> int:
+    """Which numbers does someone else's model disagree with ours about?
+
+    The question the audit right actually turns on. Signatures would say who
+    asserted a figure; this says whether the figure is plausible.
+    """
+    document = json.loads(path.read_text())
+
+    if not is_diffable(document):
+        print(
+            f"{path} was written in an older format carrying only a digest of the\n"
+            "coefficients. It can be verified but not diffed; re-export it with a\n"
+            "current version to compare numbers.",
+            file=sys.stderr,
+        )
+        return 2
+
+    differences = diff_recipes(document, region.recipes)
+
+    print(f"Coefficients: {path} against this model")
+    print("=" * 74)
+    if not differences:
+        print("  Every coefficient matches.")
+        return 0
+
+    for difference in differences:
+        theirs = difference.theirs
+        mine = difference.mine
+        print(f"  {difference.recipe_name} — {difference.action} {difference.specification_id}")
+        if theirs:
+            print(f"      theirs {theirs['magnitude']:>12,.2f} {theirs['units']}")
+            print(f"             {difference.their_citation}")
+        else:
+            print("      theirs      absent")
+        if mine:
+            print(f"      ours   {mine['magnitude']:>12,.2f} {mine['units']}")
+            print(f"             {difference.my_citation}")
+        else:
+            print("      ours        absent")
+        if difference.ratio is not None:
+            print(f"      ratio  {difference.ratio:>12,.2f}x")
+        print()
+
+    print(f"  {len(differences)} coefficient(s) differ. That is a disagreement about the")
+    print("  world rather than a fault: compare the citations and decide which")
+    print("  figure describes your soil, your herd, and your season.")
+    return 1
+
+
 def _serve(host: str, port: int) -> int:
     """Run the explorer's development server.
 
@@ -364,6 +415,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "verify", help="re-run someone else's export and report where you disagree"
     )
     verify_parser.add_argument("path", type=pathlib.Path)
+    diff_parser = subparsers.add_parser(
+        "diff", help="show which coefficients an export disagrees with this model about"
+    )
+    diff_parser.add_argument("path", type=pathlib.Path)
     web_parser = subparsers.add_parser("web", help="serve the explorer (requires the 'web' extra)")
     web_parser.add_argument("--host", default="127.0.0.1")
     web_parser.add_argument("--port", type=int, default=8000)
@@ -387,6 +442,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         _write_export(region, args.path, args.scenario, args.periods)
     elif args.command == "verify":
         return _verify_export(region, args.path)
+    elif args.command == "diff":
+        return _diff_export(region, args.path)
     elif args.command == "web":
         return _serve(args.host, args.port)
 

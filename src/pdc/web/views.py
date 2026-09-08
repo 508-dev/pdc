@@ -7,14 +7,17 @@ disagree with the model or with the CLI (D-010).
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
+from django.conf import settings
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 
 from pdc.analysis import resource_pressure
 from pdc.seed.scenarios import CONSUMPTION_STANDARD, whole_valley_batches
+from pdc.sim import diff_recipes, is_diffable, verify
 from pdc.web.context import (
     SCENARIOS,
     readings,
@@ -237,3 +240,89 @@ def explore(request: HttpRequest) -> HttpResponse:
     context = _explore_context(params)
     template = "pdc/_results.html" if request.headers.get("HX-Request") else "pdc/explore.html"
     return render(request, template, context)
+
+
+def coefficients(request: HttpRequest) -> HttpResponse:
+    """Every coefficient the model runs on, with where it came from.
+
+    The numbers are the argument. Putting all of them on one page, with their
+    provenance visible, is what lets someone say "that one is wrong for our
+    soil" instead of disputing a conclusion they cannot get behind.
+    """
+    world = region()
+    rows = []
+    for recipe in sorted(world.recipes, key=lambda r: r.id):
+        for flow in recipe.flows():
+            rows.append(
+                {
+                    "recipe": recipe,
+                    "flow": flow,
+                    "is_illustrative": flow.citation.provenance.value == "illustrative",
+                }
+            )
+
+    illustrative = sum(1 for row in rows if row["is_illustrative"])
+    return render(
+        request,
+        "pdc/coefficients.html",
+        {
+            "rows": rows,
+            "illustrative": illustrative,
+            "total": len(rows),
+            "standards": sorted(world.standards, key=lambda s: s.id),
+        },
+    )
+
+
+def compare_models(request: HttpRequest) -> HttpResponse:
+    """Upload someone else's export and find out where you disagree.
+
+    Two findings, kept apart because collapsing them hides the interesting
+    one: your code differs from theirs, or you believe different things about
+    the world. The second is not a fault, and the page says so.
+    """
+    world = region()
+    context: dict[str, Any] = {"max_bytes": settings.MAX_UPLOAD_BYTES}
+
+    if request.method != "POST":
+        return render(request, "pdc/compare_models.html", context)
+
+    upload = request.FILES.get("export")
+    if upload is None:
+        context["error"] = "Choose an export file to compare against."
+        return render(request, "pdc/compare_models.html", context, status=400)
+
+    if upload.size and upload.size > settings.MAX_UPLOAD_BYTES:
+        context["error"] = "That file is larger than this page accepts."
+        return render(request, "pdc/compare_models.html", context, status=400)
+
+    try:
+        document = json.loads(upload.read().decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        context["error"] = f"That does not parse as a PDC export: {error}"
+        return render(request, "pdc/compare_models.html", context, status=400)
+
+    if not isinstance(document, dict) or "results" not in document:
+        context["error"] = "That JSON is not a PDC export — it has no results."
+        return render(request, "pdc/compare_models.html", context, status=400)
+
+    label = document.get("scenario", {}).get("label", "")
+    name = "grain-first" if str(label).startswith("grain") else "split"
+    periods = document.get("scenario", {}).get("periods", 3)
+
+    forward = run(name, periods)
+    result = verify(document, forward, recipes=world.recipes, standards=world.standards)
+    differences = diff_recipes(document, world.recipes) if is_diffable(document) else ()
+
+    context.update(
+        {
+            "filename": upload.name,
+            "document": document,
+            "verification": result,
+            "differences": differences,
+            "diffable": is_diffable(document),
+            "their_scenario": label,
+            "compared_against": name,
+        }
+    )
+    return render(request, "pdc/compare_models.html", context)

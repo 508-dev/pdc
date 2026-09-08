@@ -83,10 +83,11 @@ where it is actually needed.
   the interface can express is also a branch, a URL, and an export. HTMX
   swaps the results where JavaScript is available; the plain form reloads the
   page where it is not.
-- **M9 — Coefficient inspection and diff.** Follow any number in an
-  explanation to its citation and provenance; compare one branch's
-  coefficients against another's. This is the "why does this farm claim ten
-  times the labour" workflow, and it is the reason the interface exists.
+- **M9 — Coefficient inspection and diff.** ✅ Every coefficient on one page
+  with its provenance, and an upload that re-runs someone else's export and
+  names the numbers the two models disagree about. Exports carry the
+  coefficients themselves from format 2, since a digest can report *that* two
+  models differ but not *about what*.
 - **M10 — Export and verify in the browser.** Download the scenario you are
   looking at; upload someone else's and see where you disagree.
 

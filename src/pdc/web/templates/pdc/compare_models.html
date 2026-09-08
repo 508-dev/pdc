@@ -1,0 +1,97 @@
+{% extends "pdc/base.html" %}
+{% block title %}Compare models{% endblock %}
+{% block content %}
+
+<h2>Where do we disagree?</h2>
+<p class="lede">Upload a scenario someone else exported. This page re-runs it
+  against this copy of the model and reports what differs — and, more usefully,
+  whether the difference is a fault or an honest disagreement about the world.</p>
+
+{% if error %}<div class="note"><strong>{{ error }}</strong></div>{% endif %}
+
+<form class="controls" method="post" enctype="multipart/form-data"
+      action="{% url 'compare_models' %}">
+  {% csrf_token %}
+  <label for="export">Their export (JSON, from <code>pdc export</code>)</label>
+  <input type="file" id="export" name="export" accept="application/json,.json">
+  <button type="submit">Compare</button>
+</form>
+
+{% if verification %}
+  <h3>{{ filename }}</h3>
+  <table>
+    <tbody>
+      <tr><td>Recipe coefficients</td>
+        <td class="{% if verification.recipes_match %}met{% else %}short{% endif %}">
+          {% if verification.recipes_match %}match{% else %}differ{% endif %}</td></tr>
+      <tr><td>Need standards</td>
+        <td class="{% if verification.standards_match %}met{% else %}short{% endif %}">
+          {% if verification.standards_match %}match{% else %}differ{% endif %}</td></tr>
+      <tr><td>Results</td>
+        <td class="{% if verification.results_match %}met{% else %}short{% endif %}">
+          {% if verification.results_match %}match{% else %}differ{% endif %}</td></tr>
+      <tr><td>Kernel version</td>
+        <td>{{ document.kernel_version }}
+          {% if not verification.kernel_matches %}(differs from this one){% endif %}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><strong>{{ verification.summary }}</strong></div>
+
+  {% if verification.notes %}
+    <h3>Where the answers part</h3>
+    <ul class="detail">
+      {% for note in verification.notes %}<li>{{ note }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if differences %}
+    <h3>Which numbers you disagree about</h3>
+    <p class="detail">This is the question worth asking of any model: not
+      whether the conclusion is wrong, but which figure behind it you would
+      change, and on what evidence.</p>
+    <table>
+      <thead>
+        <tr><th>Process</th><th>Flow</th><th>Theirs</th><th>Ours</th><th>Ratio</th></tr>
+      </thead>
+      <tbody>
+      {% for difference in differences %}
+        <tr>
+          <td>{{ difference.recipe_name }}</td>
+          <td><code>{{ difference.action }}</code> {{ difference.specification_id }}</td>
+          <td class="num">
+            {% if difference.theirs %}
+              {{ difference.theirs.magnitude|floatformat:2 }} {{ difference.theirs.units }}
+              <br><span class="cite">{{ difference.their_citation }}</span>
+            {% else %}<span class="detail">absent</span>{% endif %}
+          </td>
+          <td class="num">
+            {% if difference.mine %}
+              {{ difference.mine.magnitude|floatformat:2 }} {{ difference.mine.units }}
+              <br><span class="cite">{{ difference.my_citation }}</span>
+            {% else %}<span class="detail">absent</span>{% endif %}
+          </td>
+          <td class="num short">
+            {% if difference.ratio %}{{ difference.ratio|floatformat:2 }}&times;
+            {% else %}&mdash;{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% elif not diffable %}
+    <div class="note">
+      This export was written in an older format that carries only a digest of
+      the coefficients, not the coefficients themselves. It can be checked for
+      agreement but not diffed number by number. Re-export it with a current
+      version to see which figures differ.
+    </div>
+  {% elif not verification.recipes_match %}
+    <div class="note">The digests differ but no individual coefficient does,
+      which usually means a recipe was added or removed.</div>
+  {% else %}
+    <div class="note">Every coefficient matches. Any difference in the answers
+      comes from the scenario, not from what the two models believe.</div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}
