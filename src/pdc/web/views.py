@@ -16,8 +16,12 @@ from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadReque
 from django.shortcuts import render
 
 from pdc.analysis import resource_pressure
-from pdc.seed.scenarios import CONSUMPTION_STANDARD, whole_valley_batches
-from pdc.sim import diff_recipes, is_diffable, verify
+from pdc.seed.scenarios import (
+    CONSUMPTION_STANDARD,
+    scenario_from_branch,
+    whole_valley_batches,
+)
+from pdc.sim import Branch, build_export, diff_recipes, is_diffable, verify
 from pdc.web.context import (
     SCENARIOS,
     readings,
@@ -26,7 +30,12 @@ from pdc.web.context import (
     run,
     run_scenario,
 )
-from pdc.web.params import NO_CONSUMPTION, ExploreParams, ParameterError
+from pdc.web.params import (
+    NO_CONSUMPTION,
+    ExploreParams,
+    ParameterError,
+    params_from_branch,
+)
 
 
 def _standard_id(request: HttpRequest) -> str:
@@ -242,6 +251,40 @@ def explore(request: HttpRequest) -> HttpResponse:
     return render(request, template, context)
 
 
+def export_view(request: HttpRequest) -> HttpResponse:
+    """Download the scenario currently on screen.
+
+    The receipt for whatever the reader has been looking at: the question,
+    the assumptions behind it, the coefficients it relied on, and the answer.
+    Someone else opens it against their own model and finds out whether they
+    agree, and about what.
+    """
+    world = region()
+    try:
+        params = ExploreParams.parse(
+            request.GET.dict(), {standard.id for standard in world.standards}
+        )
+    except ParameterError as error:
+        return HttpResponseBadRequest(f"{error}")
+
+    scenario = params.to_scenario()
+    branch = params.to_branch()
+    document = build_export(
+        run_scenario(scenario),
+        scenario,
+        recipes=world.recipes,
+        standards=world.standards,
+        branch=branch,
+    )
+
+    filename = f"pdc-{branch.label}-{branch.digest[:8]}.json"
+    return HttpResponse(
+        json.dumps(document, indent=2, sort_keys=True) + "\n",
+        content_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 def coefficients(request: HttpRequest) -> HttpResponse:
     """Every coefficient the model runs on, with where it came from.
 
@@ -307,22 +350,48 @@ def compare_models(request: HttpRequest) -> HttpResponse:
         return render(request, "pdc/compare_models.html", context, status=400)
 
     label = document.get("scenario", {}).get("label", "")
-    name = "grain-first" if str(label).startswith("grain") else "split"
-    periods = document.get("scenario", {}).get("periods", 3)
 
-    forward = run(name, periods)
+    # Prefer re-running the scenario their branch describes. Guessing from a
+    # label would verify our answer to a slightly different question, which is
+    # a worse failure than admitting the branch could not be read.
+    known = {standard.id for standard in world.standards}
+    recovered = None
+    branch_payload = document.get("branch")
+    if branch_payload:
+        try:
+            recovered = params_from_branch(Branch.from_json(branch_payload), known)
+        except (KeyError, TypeError, ValueError):
+            recovered = None
+
+    periods = document.get("scenario", {}).get("periods", 3)
+    if branch_payload:
+        # Any branch can be rebuilt exactly, including ones the controls
+        # cannot express. Recovering control positions is only needed to
+        # *reopen* a scenario, which genuinely can fail.
+        forward = run_scenario(scenario_from_branch(Branch.from_json(branch_payload), periods))
+        compared_against = "their own assumptions"
+    else:
+        name = "grain-first" if str(label).startswith("grain") else "split"
+        forward = run(name, periods)
+        compared_against = f"the {name} preset, since the export carries no branch"
+
     result = verify(document, forward, recipes=world.recipes, standards=world.standards)
     differences = diff_recipes(document, world.recipes) if is_diffable(document) else ()
 
+    # If their scenario is one the dial can express, it can be opened against
+    # our coefficients — the same question asked of a different model.
+    reopen_query = recovered.to_query() if recovered is not None else None
+
     context.update(
         {
+            "reopen_query": reopen_query,
             "filename": upload.name,
             "document": document,
             "verification": result,
             "differences": differences,
             "diffable": is_diffable(document),
             "their_scenario": label,
-            "compared_against": name,
+            "compared_against": compared_against,
         }
     )
     return render(request, "pdc/compare_models.html", context)

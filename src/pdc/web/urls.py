@@ -16,6 +16,7 @@ urlpatterns = [
     path("", views.overview, name="overview"),
     path("compare/", views.compare, name="compare"),
     path("explore/", views.explore, name="explore"),
+    path("explore/export/", views.export_view, name="export"),
     path("coefficients/", views.coefficients, name="coefficients"),
     path("compare-models/", views.compare_models, name="compare_models"),
     path("htmx.js", views.htmx_script, name="htmx"),

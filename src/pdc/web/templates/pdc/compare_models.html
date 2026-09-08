@@ -19,6 +19,8 @@
 
 {% if verification %}
   <h3>{{ filename }}</h3>
+  <p class="detail">Their scenario: <code>{{ their_scenario }}</code>.
+    Re-run here against {{ compared_against }}.</p>
   <table>
     <tbody>
       <tr><td>Recipe coefficients</td>
@@ -37,6 +39,17 @@
   </table>
 
   <div class="note"><strong>{{ verification.summary }}</strong></div>
+
+  {% if reopen_query %}
+    <p><a href="{% url 'explore' %}?{{ reopen_query }}">Open their scenario against
+      our coefficients &rarr;</a> — the same question, asked of a different
+      model.</p>
+  {% elif document.branch %}
+    <p class="detail">Their scenario uses assumptions the controls here cannot
+      express, so it cannot be opened in the explorer. It still verifies, and
+      the coefficients still diff — an approximation labelled as theirs would
+      be worse than saying so.</p>
+  {% endif %}
 
   {% if verification.notes %}
     <h3>Where the answers part</h3>

@@ -15,8 +15,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from urllib.parse import urlencode
 
+import pint
+
 from pdc.seed.scenarios import (
+    ALFALFA_FARMS,
     CONSUMPTION_STANDARD,
+    PHOSPHORUS_STOCK,
     allocation_for,
     phosphorus_shares,
     reference_plans,
@@ -140,3 +144,73 @@ class ExploreParams:
             consumption_standard_id=self.standard_id,
         )
         return apply_branch(base, self.to_branch())
+
+
+def params_from_branch(branch: Branch, known_standards: set[str]) -> ExploreParams | None:
+    """Recover explorer controls from a branch, or decline.
+
+    Someone else's scenario arrives as a branch. If it is one the dial can
+    express, the explorer can open it against *your* coefficients — which is
+    the interesting move: the same question, asked of a different model.
+
+    Returns None when the branch says something the controls cannot. That is
+    deliberate: showing an approximation of someone's scenario and labelling
+    it theirs would be a small lie of exactly the kind this project exists to
+    make impossible. Better to say the dial cannot express it.
+    """
+    periods = 3
+    standard_id: str | None = CONSUMPTION_STANDARD
+    shares: dict[tuple[str, str], float] = {}
+
+    alfalfa_agents = {agent for agent, _ in ALFALFA_FARMS}
+
+    for assumption in branch.assumptions:
+        if assumption.kind is AssumptionKind.SET_PERIODS:
+            try:
+                periods = int(assumption.value)  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                return None
+        elif assumption.kind is AssumptionKind.SET_CONSUMPTION_STANDARD:
+            value = assumption.value
+            standard_id = None if value is None else str(value)
+        elif assumption.kind is AssumptionKind.SET_ALLOCATION_SHARE:
+            agent_id, specification_id = assumption.target
+            if specification_id != "soil.phosphorus":
+                # Water and land grants are part of the base, not the dial.
+                continue
+            if not isinstance(assumption.value, pint.Quantity):
+                return None
+            shares[(agent_id, specification_id)] = assumption.value.to("kgP").magnitude
+        else:
+            # A kind the controls do not offer. Say so rather than guess.
+            return None
+
+    if not shares:
+        return None
+    if standard_id is not None and standard_id not in known_standards:
+        return None
+    if not 1 <= periods <= MAX_PERIODS:
+        return None
+
+    to_forage = sum(
+        quantity for (agent_id, _), quantity in shares.items() if agent_id in alfalfa_agents
+    )
+    stock = PHOSPHORUS_STOCK.to("kgP").magnitude
+    share = to_forage / stock if stock else 0.0
+    if not 0.0 <= share <= 1.0:
+        return None
+
+    # Only claim the dial represents this branch if regenerating from it
+    # reproduces every share exactly. Anything else is an approximation
+    # wearing someone else's name.
+    regenerated = {
+        key: value.to("kgP").magnitude  # type: ignore[attr-defined]
+        for key, value in phosphorus_shares(share).items()
+    }
+    if set(regenerated) != set(shares):
+        return None
+    for key, value in regenerated.items():
+        if abs(value - shares[key]) > 1e-6:
+            return None
+
+    return ExploreParams(alfalfa_share=share, periods=periods, standard_id=standard_id)

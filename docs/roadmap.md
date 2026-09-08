@@ -88,8 +88,10 @@ where it is actually needed.
   names the numbers the two models disagree about. Exports carry the
   coefficients themselves from format 2, since a digest can report *that* two
   models differ but not *about what*.
-- **M10 — Export and verify in the browser.** Download the scenario you are
-  looking at; upload someone else's and see where you disagree.
+- **M10 — Export and verify in the browser.** ✅ Download the scenario on
+  screen; upload someone else's, verify it against their own assumptions, see
+  which coefficients differ, and — when the controls can express their
+  branch — reopen their question against your model.
 
 **Explicitly not in v1.5:** authentication, data entry, persistence,
 multi-user anything. It is a lens over a world the kernel builds, not yet a
@@ -98,6 +100,16 @@ place to keep records.
 *Answerable by someone who has never opened a terminal:* "what happens to my
 community if we allocate the phosphorus differently, and which number in the
 chain do I disagree with?"
+
+### What v1.5 delivers
+
+A scenario can now leave one person's machine and arrive at another's as a
+question rather than an answer. Someone exports what they were looking at;
+you open the same question against your own coefficients and get a list of
+the numbers you would each change, with both citations attached.
+
+Nothing in it requires JavaScript to read, a database to run, or an account to
+use.
 
 ---
 

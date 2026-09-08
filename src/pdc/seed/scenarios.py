@@ -15,6 +15,7 @@ them (D-001, D-004).
 
 from __future__ import annotations
 
+from pdc.sim import Branch, apply_branch
 from pdc.sim.world import Allocation, ProcessPlan, Scenario, WorldState
 from pdc.units import Q
 
@@ -187,3 +188,31 @@ def whole_valley_batches(region: object) -> dict[str, float]:
         "recipe.alfalfa": arable,
         "recipe.potato": arable,
     }
+
+
+def baseline_scenario(periods: int = 3, consumption_standard_id: str | None = None) -> Scenario:
+    """The scenario every branch is expressed as deltas from.
+
+    Named here rather than in a shell so that the command line and the web
+    interface reconstruct someone else's scenario the same way. They used to
+    guess it from a label prefix, which verified an answer to a slightly
+    different question.
+    """
+    return Scenario(
+        label="baseline",
+        allocation=allocation_for(0.0, label="baseline"),
+        plans=reference_plans(),
+        periods=periods,
+        consumption_standard_id=consumption_standard_id,
+    )
+
+
+def scenario_from_branch(branch: Branch, periods: int = 3) -> Scenario:
+    """Rebuild the exact scenario a branch describes.
+
+    Works for any branch, including ones no interface control can express —
+    which is why verification uses this rather than trying to recover slider
+    positions. Recovering controls is only needed to *reopen* a scenario, and
+    that genuinely can fail.
+    """
+    return apply_branch(baseline_scenario(periods), branch)

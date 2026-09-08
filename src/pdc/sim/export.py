@@ -157,6 +157,43 @@ def scenario_json(scenario: Scenario) -> dict[str, Any]:
     }
 
 
+def results_core(run: ForwardRun) -> list[dict[str, Any]]:
+    """The numeric answer alone, with no names or prose.
+
+    What `results_digest` is taken over. Two people who ran the same question
+    and got the same numbers agree, even if one of them called the scenario
+    "grain-first" and the other called it "what Sadik proposed". Labels and
+    assumption text are provenance and stay in the document for readers; they
+    are not part of whether the answers match.
+    """
+    return [
+        {
+            "period": result.period,
+            "processes": [
+                {
+                    "agent": outcome.agent_id,
+                    "recipe": outcome.recipe_id,
+                    "intended": outcome.intended_batches,
+                    "achieved": outcome.achieved_batches,
+                    "binding": outcome.binding_specification_id,
+                }
+                for outcome in sorted(result.processes, key=lambda o: (o.agent_id, o.recipe_id))
+            ],
+            "needs": [
+                {
+                    "agent": outcome.agent_id,
+                    "standard": outcome.standard_id,
+                    "required": quantity_json(outcome.required),
+                    "available": quantity_json(outcome.available),
+                    "met": outcome.met,
+                }
+                for outcome in sorted(result.needs, key=lambda o: (o.agent_id, o.standard_id))
+            ],
+        }
+        for result in run.periods
+    ]
+
+
 def results_json(run: ForwardRun) -> dict[str, Any]:
     """The answer, in a form a renderer can display and a checker can compare.
 
@@ -217,7 +254,7 @@ def build_export(
         "branch_digest": branch.digest if branch else None,
         "scenario": scenario_json(scenario),
         "results": results,
-        "results_digest": digest(results),
+        "results_digest": digest(results_core(run)),
     }
 
 
@@ -270,7 +307,7 @@ def verify(
 
     recipes_match = export.get("recipes_digest") == recipes_digest(recipes)
     standards_match = export.get("standards_digest") == standards_digest(standards)
-    results_match = export.get("results_digest") == digest(local)
+    results_match = export.get("results_digest") == digest(results_core(run))
     kernel_matches = export.get("kernel_version") == __version__
 
     if not kernel_matches:

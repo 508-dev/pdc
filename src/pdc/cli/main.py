@@ -22,6 +22,7 @@ from pdc.seed.scenarios import (
     CONSUMPTION_STANDARD,
     grain_first_scenario,
     opening_state,
+    scenario_from_branch,
     split_scenario,
     whole_valley_batches,
 )
@@ -283,14 +284,35 @@ def _write_export(region: Region, path: pathlib.Path, name: str, periods: int) -
 
 def _verify_export(region: Region, path: pathlib.Path) -> int:
     document = json.loads(path.read_text())
-    label = document["scenario"]["label"]
-    name = "grain-first" if label.startswith("grain") else "split"
-    run = _run(region, name, document["scenario"]["periods"])
+    periods = document["scenario"]["periods"]
+
+    # Rebuild the scenario their branch describes rather than guessing it from
+    # a label. Guessing verifies our answer to a slightly different question,
+    # which reads as disagreement when there is none.
+    branch_payload = document.get("branch")
+    if branch_payload:
+        scenario = scenario_from_branch(Branch.from_json(branch_payload), periods)
+        run = run_forward(
+            scenario,
+            agents=region.agents,
+            recipes=region.recipes,
+            standards=region.standards,
+            compositions=region.compositions,
+            opening=opening_state(),
+        )
+        compared = "their own assumptions"
+    else:
+        label = document["scenario"]["label"]
+        name = "grain-first" if label.startswith("grain") else "split"
+        run = _run(region, name, periods)
+        compared = f"the {name} preset, since the export carries no branch"
 
     result = verify(document, run, recipes=region.recipes, standards=region.standards)
 
     print(f"Verifying {path}")
     print("=" * 74)
+    print(f"  re-run against {compared}")
+    print()
     print(f"  recipes    {'match' if result.recipes_match else 'DIFFER'}")
     print(f"  standards  {'match' if result.standards_match else 'DIFFER'}")
     print(f"  results    {'match' if result.results_match else 'DIFFER'}")

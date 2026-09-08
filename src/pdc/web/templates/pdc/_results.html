@@ -71,6 +71,15 @@ the slider is identical to the one they reach by pasting the URL.
   </ul>
 </details>
 
+<h3>Take it with you</h3>
+<p class="detail">
+  <a href="{% url 'export' %}?{{ query }}">Download this scenario</a>
+  &mdash; the question, its assumptions, the coefficients behind it, and the
+  answer. Anyone with a copy of the model can re-run it and find out whether
+  they agree, and if not, which number they would change.
+  <a href="{% url 'compare_models' %}">Compare against someone else's &rarr;</a>
+</p>
+
 <h3>What this run assumed besides</h3>
 <ul class="detail">
   {% for assumption in run.assumptions %}<li>{{ assumption }}</li>{% endfor %}
