@@ -32,9 +32,13 @@ def scenario_for(name: str, periods: int = 3) -> Scenario:
     return grain_first_scenario(periods) if name == "grain-first" else split_scenario(periods)
 
 
-@lru_cache(maxsize=32)
-def run(name: str, periods: int = 3) -> ForwardRun:
-    scenario = scenario_for(name, periods)
+def run_scenario(scenario: Scenario) -> ForwardRun:
+    """Run any scenario against the world.
+
+    Not cached on the scenario itself, because scenarios are constructed per
+    request; `run` below caches the named presets, which is where repetition
+    actually happens.
+    """
     world = region()
     return run_forward(
         scenario,
@@ -44,6 +48,11 @@ def run(name: str, periods: int = 3) -> ForwardRun:
         compositions=world.compositions,
         opening=opening_state(),
     )
+
+
+@lru_cache(maxsize=32)
+def run(name: str, periods: int = 3) -> ForwardRun:
+    return run_scenario(scenario_for(name, periods))
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,7 +74,7 @@ class Reading:
         return self.percentage <= 0.0
 
 
-def readings(name: str, standard_id: str, periods: int = 3) -> dict[str, list[Reading]]:
+def readings_from_run(forward: ForwardRun, standard_id: str) -> dict[str, list[Reading]]:
     """Per community, per period, as percentages of that community's standard.
 
     Percentages are of each community's own declared standard and are never
@@ -74,7 +83,6 @@ def readings(name: str, standard_id: str, periods: int = 3) -> dict[str, list[Re
     (D-002).
     """
     world = region()
-    forward = run(name, periods)
     names = {agent.id: agent.name for agent in world.agents}
 
     out: dict[str, list[Reading]] = {}
@@ -97,3 +105,8 @@ def readings(name: str, standard_id: str, periods: int = 3) -> dict[str, list[Re
             )
         out[agent.id] = rows
     return out
+
+
+def readings(name: str, standard_id: str, periods: int = 3) -> dict[str, list[Reading]]:
+    """Readings for one of the named preset scenarios."""
+    return readings_from_run(run(name, periods), standard_id)

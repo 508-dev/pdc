@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}PDC{% endblock %}</title>
+{% block head_extra %}{% endblock %}
 <style>
   /* No JavaScript on this page. The causal chain uses <details>, which every
      browser expands without help. Auditing the model should not require a
@@ -53,6 +54,20 @@
   .cite { color: var(--muted); font-size: .85rem; font-style: italic; }
   .illustrative { color: var(--short); }
   code { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .controls {
+    background: var(--panel); border: 1px solid var(--rule);
+    padding: 1rem 1.25rem; margin: 1rem 0 2rem;
+  }
+  .controls label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
+  .controls output { font-weight: 400; font-variant-numeric: tabular-nums; }
+  .controls input[type=range] { width: 100%; }
+  .controls input[type=number], .controls select { padding: .3rem; font: inherit; }
+  .controls button {
+    margin-top: 1rem; padding: .45rem 1.1rem; font: inherit; cursor: pointer;
+    background: var(--ink); color: var(--paper); border: 0;
+  }
+  .htmx-indicator { opacity: 0; margin-left: .75rem; color: var(--muted); }
+  .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
   footer { max-width: 68rem; margin: 3rem auto 0; padding-top: 1rem;
            border-top: 1px solid var(--rule); color: var(--muted); font-size: .85rem; }
 </style>
@@ -65,6 +80,7 @@
   <nav>
     <a href="{% url 'overview' %}">The valley</a>
     <a href="{% url 'compare' %}">Compare allocations</a>
+    <a href="{% url 'explore' %}">Explore</a>
   </nav>
 </header>
 <main>{% block content %}{% endblock %}</main>

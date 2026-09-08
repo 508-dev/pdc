@@ -74,13 +74,15 @@ where it is actually needed.
 
 ### Milestones
 
-- **M7 — Read-only views.** The region, declared need per community, the
+- **M7 — Read-only views.** ✅ The region, declared need per community, the
   comparison table, and the `Cause` tree rendered as a walkable chain down to
   each cited coefficient. Renders `Cause.to_json()`; computes nothing.
-- **M8 — Assumption controls.** Adjust an allocation, a plan's scale, or the
-  consumption standard, and see the outcome change. Every control maps to an
-  `Assumption`, so anything the interface can express is also expressible as a
-  branch, a URL, and an export.
+- **M8 — Assumption controls.** ✅ A continuous dial for the share of
+  phosphorus going to forage, the number of seasons, and the standard
+  governing consumption. Every control maps to an `Assumption`, so anything
+  the interface can express is also a branch, a URL, and an export. HTMX
+  swaps the results where JavaScript is available; the plain form reloads the
+  page where it is not.
 - **M9 — Coefficient inspection and diff.** Follow any number in an
   explanation to its citation and provenance; compare one branch's
   coefficients against another's. This is the "why does this farm claim ten

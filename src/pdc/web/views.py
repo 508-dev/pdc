@@ -7,14 +7,23 @@ disagree with the model or with the CLI (D-010).
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 
 from pdc.analysis import resource_pressure
 from pdc.seed.scenarios import CONSUMPTION_STANDARD, whole_valley_batches
-from pdc.web.context import SCENARIOS, readings, region, run
+from pdc.web.context import (
+    SCENARIOS,
+    readings,
+    readings_from_run,
+    region,
+    run,
+    run_scenario,
+)
+from pdc.web.params import NO_CONSUMPTION, ExploreParams, ParameterError
 
 
 def _standard_id(request: HttpRequest) -> str:
@@ -162,3 +171,69 @@ def explain(request: HttpRequest, scenario: str, agent_id: str, period: int) -> 
             "standard_id": standard_id,
         },
     )
+
+
+VENDOR = Path(__file__).resolve().parent / "vendor"
+
+
+def htmx_script(request: HttpRequest) -> HttpResponse:
+    """Serve the vendored copy of HTMX.
+
+    Vendored rather than loaded from a CDN: a tool a syndicate self-hosts
+    should not depend on someone else's uptime, someone else's logs, or a
+    working route to the wider internet.
+    """
+    return HttpResponse(
+        (VENDOR / "htmx.min.js").read_bytes(),
+        content_type="application/javascript",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+def _explore_context(params: ExploreParams) -> dict[str, Any]:
+    world = region()
+    scenario = params.to_scenario()
+    branch = params.to_branch()
+    forward = run_scenario(scenario)
+
+    standard_id = params.standard_id
+    rows = []
+    if standard_id is not None:
+        table = readings_from_run(forward, standard_id)
+        for agent in sorted((a for a in world.agents if a.kind == "commune"), key=lambda a: a.name):
+            rows.append({"agent": agent, "readings": table[agent.id]})
+
+    return {
+        "params": params,
+        "branch": branch,
+        "branch_digest": branch.digest,
+        "scenario": scenario,
+        "run": forward,
+        "rows": rows,
+        "periods": range(params.periods),
+        "standards": sorted(world.standards, key=lambda s: s.id),
+        "standard_id": standard_id,
+        "no_consumption": NO_CONSUMPTION,
+        "query": params.to_query(),
+    }
+
+
+def explore(request: HttpRequest) -> HttpResponse:
+    """Move an assumption, see what follows.
+
+    The page and the fragment render from the same context, so the view a
+    reader reaches by dragging the slider is identical to the one they reach
+    by pasting the URL. Without that, a shared link would show something
+    subtly different from what the sharer saw.
+    """
+    world = region()
+    try:
+        params = ExploreParams.parse(
+            request.GET.dict(), {standard.id for standard in world.standards}
+        )
+    except ParameterError as error:
+        return HttpResponseBadRequest(f"{error}")
+
+    context = _explore_context(params)
+    template = "pdc/_results.html" if request.headers.get("HX-Request") else "pdc/explore.html"
+    return render(request, template, context)

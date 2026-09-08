@@ -80,35 +80,19 @@ def _land_grant() -> dict[tuple[str, str], object]:
     return {(agent, "land.arable"): Q(area, "ha_season") for agent, area in farms}
 
 
-def grain_first_allocation() -> Allocation:
-    """All phosphorus to the grain and potato farms.
+def phosphorus_shares(alfalfa_share: float) -> dict[tuple[str, str], object]:
+    """Divide the phosphorus stock between forage and grain.
 
-    Maximises food energy in the first year. The alfalfa farms get nothing, so
-    the dairy herds lose their feed the year after — which is the consequence
-    this scenario exists to make visible.
-    """
-    grain_hectares = sum(area for _, area in WHEAT_FARMS)
-    potato_hectares = sum(area for _, area in POTATO_FARMS)
-    total = grain_hectares + potato_hectares
+    One continuous dial rather than two presets: `alfalfa_share` of 0 gives
+    the grain and potato farms everything, 1 gives it all to forage. Within
+    each group the split is by area, which is itself an assumption — an equal
+    split per farm, or one weighted by soil condition, would be different
+    choices and equally available ones.
 
-    shares: dict[tuple[str, str], object] = {}
-    for agent, area in [*WHEAT_FARMS, *POTATO_FARMS]:
-        shares[(agent, "soil.phosphorus")] = PHOSPHORUS_STOCK * (area / total)
-    for agent, _ in ALFALFA_FARMS:
-        shares[(agent, "soil.phosphorus")] = Q(0.0, "kgP")
-
-    shares.update(_water_grant())
-    shares.update(_land_grant())
-    return Allocation.of("grain-first", shares)  # type: ignore[arg-type]
-
-
-def split_allocation(alfalfa_share: float = 0.4) -> Allocation:
-    """Phosphorus divided between grain and forage.
-
-    Less food energy in year one, because grain gets less. More in later
-    years, because the herds keep producing. The trade is across time, and
-    there is no exchange rate between this year's calories and next year's
-    that PDC could apply on anyone's behalf.
+    The dial exists because it is the argument the valley is actually having.
+    It is not a claim that the argument has one dimension: per-farm shares
+    remain expressible, and any allocation this returns can be overridden
+    farm by farm.
     """
     if not 0.0 <= alfalfa_share <= 1.0:
         raise ValueError(f"alfalfa share must be in [0, 1], got {alfalfa_share}")
@@ -125,10 +109,36 @@ def split_allocation(alfalfa_share: float = 0.4) -> Allocation:
         shares[(agent, "soil.phosphorus")] = to_grain * (area / grain_hectares)
     for agent, area in ALFALFA_FARMS:
         shares[(agent, "soil.phosphorus")] = to_alfalfa * (area / alfalfa_hectares)
+    return shares
 
+
+def allocation_for(alfalfa_share: float, label: str | None = None) -> Allocation:
+    """An allocation at a given forage share, with land and water granted."""
+    shares = phosphorus_shares(alfalfa_share)
     shares.update(_water_grant())
     shares.update(_land_grant())
-    return Allocation.of(f"split-{alfalfa_share:g}", shares)  # type: ignore[arg-type]
+    return Allocation.of(label or f"alfalfa-{alfalfa_share:g}", shares)  # type: ignore[arg-type]
+
+
+def grain_first_allocation() -> Allocation:
+    """All phosphorus to the grain and potato farms.
+
+    Maximises food energy in the first year. The alfalfa farms get nothing, so
+    the dairy herds lose their feed the year after — which is the consequence
+    this allocation exists to make visible. Exactly `allocation_for(0.0)`.
+    """
+    return allocation_for(0.0, label="grain-first")
+
+
+def split_allocation(alfalfa_share: float = 0.4) -> Allocation:
+    """Phosphorus divided between grain and forage.
+
+    Less food energy in year one, because grain gets less. More in later
+    years, because the herds keep producing. The trade is across time, and
+    there is no exchange rate between this year's calories and next year's
+    that PDC could apply on anyone's behalf.
+    """
+    return allocation_for(alfalfa_share, label=f"split-{alfalfa_share:g}")
 
 
 CONSUMPTION_STANDARD = "abbenay-valley:food-energy-adequate"

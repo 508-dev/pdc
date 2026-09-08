@@ -15,6 +15,8 @@ from pdc.web import views
 urlpatterns = [
     path("", views.overview, name="overview"),
     path("compare/", views.compare, name="compare"),
+    path("explore/", views.explore, name="explore"),
+    path("htmx.js", views.htmx_script, name="htmx"),
     path(
         "explain/<str:scenario>/<str:agent_id>/<int:period>/",
         views.explain,

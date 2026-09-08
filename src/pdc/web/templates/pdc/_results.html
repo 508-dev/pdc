@@ -1,0 +1,77 @@
+{% comment %}
+The results fragment. Rendered both on its own for HTMX swaps and inside the
+full page, from the same context — so the view a reader reaches by dragging
+the slider is identical to the one they reach by pasting the URL.
+{% endcomment %}
+
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th>Community</th>
+      {% for period in periods %}<th>year {{ period|add:1 }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td>{{ row.agent.name }}</td>
+      {% for reading in row.readings %}
+        <td class="num {% if reading.is_destitute %}zero{% elif not reading.met %}short{% else %}met{% endif %}">
+          {{ reading.percentage|floatformat:1 }}%
+        </td>
+      {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="detail">Each figure is that community's food energy as a share of
+  its own declared standard. They are not added together.</p>
+{% else %}
+<p class="detail">Nothing is being consumed, so there is no shortfall to
+  report — only stocks accumulating. Choose a standard above to see how
+  communities fare against it.</p>
+{% endif %}
+
+<h3>What produced this</h3>
+<table>
+  <thead><tr><th>Process</th><th>Intended</th><th>Achieved</th><th>Limited by</th></tr></thead>
+  <tbody>
+  {% for outcome in run.periods.0.processes %}
+    <tr>
+      <td>{{ outcome.agent_id }} &middot; <code>{{ outcome.recipe_id }}</code></td>
+      <td class="num">{{ outcome.intended_batches|floatformat:0 }}</td>
+      <td class="num {% if outcome.underran %}short{% endif %}">
+        {{ outcome.achieved_batches|floatformat:0 }}</td>
+      <td>{% if outcome.binding_specification_id %}
+            <code>{{ outcome.binding_specification_id }}</code>
+          {% else %}&mdash;{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="detail">Year one. Output is bounded by whichever input runs out
+  first, so the limiting column names the constraint rather than scoring it.</p>
+
+<h3>This view, as assumptions</h3>
+<p class="detail">Every control above is a named assumption. That is what makes
+  this view shareable, exportable, and checkable by someone else &mdash; the
+  URL is the scenario.</p>
+<details>
+  <summary>{{ branch.assumptions|length }} assumptions
+    &middot; branch <code>{{ branch_digest|slice:":12" }}</code></summary>
+  <ul class="detail">
+    {% for assumption in branch.assumptions %}
+      <li><code>{{ assumption.kind.value }}</code>
+        {{ assumption.target|join:" / " }}
+        {% if assumption.value is not None %}= {{ assumption.value }}{% endif %}
+        {% if assumption.rationale %}<br><em>{{ assumption.rationale }}</em>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</details>
+
+<h3>What this run assumed besides</h3>
+<ul class="detail">
+  {% for assumption in run.assumptions %}<li>{{ assumption }}</li>{% endfor %}
+</ul>

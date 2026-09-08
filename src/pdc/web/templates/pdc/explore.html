@@ -1,0 +1,50 @@
+{% extends "pdc/base.html" %}
+{% block title %}Explore allocations{% endblock %}
+{% block head_extra %}<script src="{% url 'htmx' %}" defer></script>{% endblock %}
+{% block content %}
+
+<h2>What if we divided the phosphorus differently?</h2>
+<p class="lede">Move the dial and the model runs again. Nothing here is a
+  recommendation — it shows what would follow, and the choosing is yours.</p>
+
+{# A plain GET form. HTMX intercepts it when JavaScript is available and swaps
+   only the results; without JavaScript the button submits normally and the
+   whole page reloads to the same URL. The tool works either way. #}
+<form class="controls" method="get" action="{% url 'explore' %}"
+      hx-get="{% url 'explore' %}" hx-target="#results" hx-swap="innerHTML"
+      hx-trigger="change, submit" hx-push-url="true" hx-indicator="#working">
+
+  <label for="alfalfa">
+    Share of the phosphorus stock to forage
+    <output for="alfalfa">{{ params.alfalfa_percent|floatformat:0 }}%</output>
+  </label>
+  <input type="range" id="alfalfa" name="alfalfa" min="0" max="100" step="5"
+         value="{{ params.alfalfa_percent|floatformat:0 }}"
+         oninput="this.previousElementSibling.querySelector('output').value = this.value + '%'">
+  <p class="detail">0% is everything to grain and potatoes; 100% is everything
+    to forage, and so to the dairy herds.</p>
+
+  <label for="periods">Seasons to run forward</label>
+  <input type="number" id="periods" name="periods" min="1" max="12"
+         value="{{ params.periods }}">
+
+  <label for="standard">Standard governing how much people eat</label>
+  <select id="standard" name="standard">
+    {% for standard in standards %}
+      <option value="{{ standard.id }}" {% if standard.id == standard_id %}selected{% endif %}>
+        {{ standard.name }}</option>
+    {% endfor %}
+    <option value="{{ no_consumption }}" {% if not standard_id %}selected{% endif %}>
+      Nothing is consumed (study production alone)</option>
+  </select>
+
+  <noscript><p class="detail">JavaScript is off, which is fine.</p></noscript>
+  <button type="submit">Run it</button>
+  <span id="working" class="htmx-indicator">working&hellip;</span>
+</form>
+
+<div id="results">
+  {% include "pdc/_results.html" %}
+</div>
+
+{% endblock %}
